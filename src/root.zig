@@ -17,7 +17,8 @@ pub fn Buffer(comptime T: type) type {
         const Alloc = std.mem.Allocator;
 
         pub fn init(width: usize, height: usize, allocator: Alloc, clear_value: T) !Self {
-            const data = try std.ArrayList(T).initCapacity(allocator, width * height);
+            var data = try std.ArrayList(T).initCapacity(allocator, width * height);
+            data.expandToCapacity();
             var output = Buffer(T){
                 .width = width,
                 .height = height,
@@ -43,7 +44,7 @@ pub fn Buffer(comptime T: type) type {
                 return null;
             }
 
-            return self.data[self.index(x, y)];
+            return self.data.items[self.index(x, y)];
         }
 
         pub fn set(self: *Self, x: usize, y: usize, data: T) bool {
@@ -51,7 +52,7 @@ pub fn Buffer(comptime T: type) type {
                 return false;
             }
 
-            self.data[self.index(x, y)] = data;
+            self.data.items[self.index(x, y)] = data;
             return true;
         }
 
@@ -67,4 +68,15 @@ pub fn Buffer(comptime T: type) type {
 
 pub fn vec2FromPoint(point: win.WinPoint) vec.Vec2(i32) {
     return vec.Vec2(i32).build(point.x, point.y);
+}
+
+pub fn getTerminalDimensions() struct { usize, usize } {
+    var console_info: win.WinConsoleInfo = undefined;
+    const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
+    _ = win.GetConsoleScreenBufferInfo(handle, &console_info);
+
+    const width, const height = .{ console_info.window_size.x - 1, console_info.window_size.y - 1 };
+    const wp: u16, const hp: u16 = .{ @bitCast(width), @bitCast(height) };
+
+    return .{ @as(usize, wp), @as(usize, hp) };
 }

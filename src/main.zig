@@ -11,9 +11,9 @@ pub fn main() !void {
     var app = lib.app.Application{
         .inputs = lib.sim.Inputs.init(),
         .simulation = try lib.sim.Simulation.init(allocator, 5),
-        .renderer = try lib.ren.Renderer.init(100, 50, allocator),
+        .renderer = try lib.ren.Renderer.init(allocator),
     };
     defer app.deinit();
 
-    app.run();
+    try app.run();
 }

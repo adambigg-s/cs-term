@@ -15,6 +15,7 @@ pub const WinShort = i16;
 pub const WIN_STD_HANDLE = -11;
 
 pub const WIN_FALSE: WinBool = 0;
+pub const WIN_NOT_FALSE: WinBool = 999999;
 pub const WIN_KEY_FALSE: WinKeyReturn = 0;
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
@@ -69,3 +70,18 @@ pub extern "Kernel32" fn GetConsoleScreenBufferInfo(
     console_handle: WinHandle,
     console_info: *WinConsoleInfo,
 ) WinBool;
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showcursor
+extern "User32" fn ShowCursor(toggle_show: WinBool) WinInt;
+
+pub fn showCursor() void {
+    while (ShowCursor(WIN_NOT_FALSE) < 0) {
+        continue;
+    }
+}
+
+pub fn hideCursor() void {
+    while (ShowCursor(WIN_FALSE) >= 0) {
+        continue;
+    }
+}

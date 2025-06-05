@@ -12,7 +12,7 @@ pub const Application = struct {
 
     const Self = @This();
 
-    pub fn run(self: *Self) void {
+    pub fn run(self: *Self) !void {
         while (!self.inputs.key_escape) {
             self.inputs.update();
 
@@ -24,6 +24,10 @@ pub const Application = struct {
             _ = win.GetConsoleScreenBufferInfo(handle, &info);
 
             std.debug.print("\x1b[22Hhandle: {any}\n", .{info});
+
+            _ = self.renderer.main.set(10, 10, '#');
+
+            try self.renderer.renderScene();
         }
     }
 
