@@ -1,9 +1,9 @@
 const lib = @import("root.zig");
-const std = lib.std;
 const vec = lib.vec;
 const sim = lib.sim;
 const ren = lib.ren;
 const win = lib.win;
+const std = lib.std;
 
 pub const Application = struct {
     inputs: sim.Inputs,

@@ -1,9 +1,10 @@
-pub const win = @import("winapi.zig");
-pub const vec = @import("vector.zig");
 pub const std = @import("std");
+
 pub const app = @import("application.zig");
-pub const sim = @import("simulation.zig");
 pub const ren = @import("renderer.zig");
+pub const sim = @import("simulation.zig");
+pub const vec = @import("vector.zig");
+pub const win = @import("winapi.zig");
 
 pub fn Buffer(comptime T: type) type {
     return struct {
