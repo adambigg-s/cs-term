@@ -53,22 +53,22 @@ pub const Renderer = struct {
             return;
         }
 
-        const cam_x = to_target.inner_product(viewmodel.right);
-        const cam_y = to_target.inner_product(viewmodel.up);
-        const cam_z = to_target.inner_product(viewmodel.front);
+        const relx = to_target.inner_product(viewmodel.right);
+        const rely = to_target.inner_product(viewmodel.up);
+        const relz = to_target.inner_product(viewmodel.front);
 
-        if (cam_z < 0.1) {
+        if (relz < 0.1) {
             return;
         }
 
-        const screen_x = (cam_x / (cam_z * fov)) * @as(f32, @floatFromInt(self.width)) / 2 + @as(f32, @floatFromInt(self.width)) / 2;
-        const screen_y = (-cam_y / (cam_z * fov)) * @as(f32, @floatFromInt(self.height)) / 2 + @as(f32, @floatFromInt(self.height)) / 2;
+        const sx = (relx / (relz * fov)) * @as(f32, @floatFromInt(self.width)) / 2 + @as(f32, @floatFromInt(self.width)) / 2;
+        const sy = (-rely / (relz * fov)) * @as(f32, @floatFromInt(self.height)) / 2 + @as(f32, @floatFromInt(self.height)) / 2;
 
-        const half_size = size / cam_z * 10;
+        const half_size = size / relz * 10;
         const int_half_size: isize = @intFromFloat(half_size);
 
-        const center_x: isize = @intFromFloat(screen_x);
-        const center_y: isize = @intFromFloat(screen_y);
+        const center_x: isize = @intFromFloat(sx);
+        const center_y: isize = @intFromFloat(sy);
 
         var dy = -int_half_size;
         while (dy <= int_half_size) : (dy += 1) {
