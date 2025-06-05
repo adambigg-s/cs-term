@@ -5,17 +5,23 @@ const win = lib.win;
 
 pub const Simulation = struct {
     targets: std.ArrayList(Target),
+    player: Player,
 
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator, target_count: usize) !Self {
         return Simulation{
             .targets = try std.ArrayList(Target).initCapacity(allocator, target_count),
+            .player = Player.new(),
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.targets.deinit();
+    }
+
+    pub fn update(self: *Self) !void {
+        self.player.update();
     }
 };
 
@@ -28,8 +34,32 @@ pub const Player = struct {
     yaw: f32,
 
     const Self = @This();
+    const math = lib.std.math;
 
-    pub fn updateVectors(_: *Self) void {}
+    pub fn new() Self {
+        return Player{
+            .pos = vec.Vec3(f32).zeros(),
+            .front = vec.Vec3(f32).zeros(),
+            .right = vec.Vec3(f32).zeros(),
+            .up = vec.Vec3(f32).build(0, 1, 0),
+            .pitch = 0,
+            .yaw = 0,
+        };
+    }
+
+    pub fn update(self: *Self) void {
+        self.updateVectors();
+    }
+
+    pub fn updateVectors(self: *Self) void {
+        self.front = vec.Vec3(f32).build(
+            math.cos(self.yaw) * math.cos(self.pitch),
+            math.sin(self.pitch),
+            math.sin(self.yaw) * math.cos(self.pitch),
+        );
+        self.front = self.front.normalize();
+        self.right = self.front.cross_product(self.up).normalize();
+    }
 };
 
 pub const Inputs = struct {
@@ -58,7 +88,7 @@ pub const Inputs = struct {
         };
     }
 
-    pub fn update(self: *Self) void {
+    pub fn update(self: *Self) !void {
         self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WIN_KEY_FALSE;
         self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WIN_KEY_FALSE;
         self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WIN_KEY_FALSE;

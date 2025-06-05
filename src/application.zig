@@ -14,7 +14,8 @@ pub const Application = struct {
 
     pub fn run(self: *Self) !void {
         while (!self.inputs.key_escape) {
-            self.inputs.update();
+            try self.inputs.update();
+            try self.simulation.update();
 
             std.debug.print("\x1b[20Hinputs printed: {any}\n", .{self.inputs});
 

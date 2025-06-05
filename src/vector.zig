@@ -2,8 +2,8 @@ pub const math = @import("std").math;
 
 pub fn Vec2(comptime T: type) type {
     return struct {
-        x: T,
-        y: T,
+        x: T = 0,
+        y: T = 0,
 
         const Self = @This();
 
@@ -51,19 +51,23 @@ pub fn Vec2(comptime T: type) type {
         pub fn length(self: Self) T {
             return math.sqrt(self.length_sq());
         }
+
+        pub fn normalize(self: Self) Self {
+            return self.div(self.length());
+        }
     };
 }
 
 pub fn Vec3(comptime T: type) type {
     return struct {
-        x: T,
-        y: T,
-        z: T,
+        x: T = 0,
+        y: T = 0,
+        z: T = 0,
 
         const Self = @This();
 
         pub fn build(x: T, y: T, z: T) Self {
-            return Vec2(T){ .x = x, .y = y, .z = z };
+            return Vec3(T){ .x = x, .y = y, .z = z };
         }
 
         pub fn zeros() Self {
@@ -147,6 +151,10 @@ pub fn Vec3(comptime T: type) type {
 
         pub fn rotateZYX(self: Self, angles: Self) Self {
             return self.rotateZ(angles.z).rotateY(angles.y).rotateX(angles.x);
+        }
+
+        pub fn normalize(self: Self) Self {
+            return self.div(self.length());
         }
     };
 }
