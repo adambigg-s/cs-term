@@ -19,9 +19,10 @@ pub const Application = struct {
 
     pub fn run(self: *Self) !void {
         while (!self.inputs.key_escape) {
-            try self.inputs.update();
+            try self.inputs.updateDeltas();
+            self.inputs.updatePos(1920, 1080);
             _ = win.SetCursorPos(1920, 1080);
-            self.inputs.setPos(1920, 1080);
+
             try self.simulation.update(&self.inputs);
 
             self.renderer.clear();

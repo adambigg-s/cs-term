@@ -76,7 +76,10 @@ pub fn getTerminalDimensions() struct { usize, usize } {
     const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
     _ = win.GetConsoleScreenBufferInfo(handle, &console_info);
 
-    const width, const height = .{ console_info.window_size.x - 1, console_info.window_size.y - 1 };
+    const width, const height = .{
+        console_info.window_size.x - 1,
+        console_info.window_size.y - 1,
+    };
     const wp: u16, const hp: u16 = .{ @bitCast(width), @bitCast(height) };
 
     return .{ @as(usize, wp), @as(usize, hp) };

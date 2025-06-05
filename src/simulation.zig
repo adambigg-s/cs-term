@@ -33,7 +33,7 @@ pub const Simulation = struct {
     fn randomTargets(self: *Self) void {
         for (0..self.target_count) |index| {
             const target = Target{
-                .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(5, 5, 0)),
+                .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(5, 0, 5)),
                 .size = 5,
             };
             self.targets.items[index] = target;
@@ -46,6 +46,7 @@ pub const Player = struct {
     front: vec.Vec3(f32),
     right: vec.Vec3(f32),
     up: vec.Vec3(f32),
+    world_up: vec.Vec3(f32),
     pitch: f32,
     yaw: f32,
 
@@ -58,7 +59,8 @@ pub const Player = struct {
             .pos = vec.Vec3(f32).zeros(),
             .front = vec.Vec3(f32).zeros(),
             .right = vec.Vec3(f32).zeros(),
-            .up = vec.Vec3(f32).build(0, 1, 0),
+            .up = vec.Vec3(f32).zeros(),
+            .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
         };
@@ -67,9 +69,23 @@ pub const Player = struct {
     // temporary just to see if working
     pub fn update(self: *Self, inputs: *Inputs) void {
         const sense = 0.002;
+        const speed = 0.01;
 
         self.yaw += @as(f32, @floatFromInt(inputs.mouse_delta.x)) * sense;
         self.pitch -= @as(f32, @floatFromInt(inputs.mouse_delta.y)) * sense;
+
+        if (inputs.key_w) {
+            self.pos = self.pos.add(self.front.mul(speed));
+        }
+        if (inputs.key_s) {
+            self.pos = self.pos.sub(self.front.mul(speed));
+        }
+        if (inputs.key_a) {
+            self.pos = self.pos.sub(self.right.mul(speed));
+        }
+        if (inputs.key_d) {
+            self.pos = self.pos.add(self.right.mul(speed));
+        }
 
         self.updateVectors();
     }
@@ -81,7 +97,8 @@ pub const Player = struct {
             math.sin(self.yaw) * math.cos(self.pitch),
         );
         self.front = self.front.normalize();
-        self.right = self.front.cross_product(self.up).normalize();
+        self.right = self.front.cross_product(self.world_up).normalize();
+        self.up = self.right.cross_product(self.front).normalize();
     }
 };
 
@@ -116,7 +133,7 @@ pub const Inputs = struct {
         };
     }
 
-    pub fn updateDelta(self: *Self) !void {
+    pub fn updateDeltas(self: *Self) !void {
         self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WIN_KEY_FALSE;
         self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WIN_KEY_FALSE;
         self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WIN_KEY_FALSE;
