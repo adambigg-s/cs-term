@@ -133,20 +133,22 @@ pub const Inputs = struct {
         };
     }
 
-    pub fn updateDeltas(self: *Self) !void {
+    pub fn updateKeys(self: *Self) !void {
         self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WIN_KEY_FALSE;
         self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WIN_KEY_FALSE;
         self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WIN_KEY_FALSE;
         self.key_d = win.GetAsyncKeyState(win.VK_D) != win.WIN_KEY_FALSE;
         self.key_escape = win.GetAsyncKeyState(win.VK_ESCAPE) != win.WIN_KEY_FALSE;
         self.mouse_click = win.GetAsyncKeyState(win.MOUSE_LBUTTON) != win.WIN_KEY_FALSE;
+    }
 
+    pub fn updateDeltas(self: *Self) !void {
         var point: win.WinPoint = undefined;
         _ = win.GetCursorPos(&point);
         self.mouse_delta = lib.vec2FromPoint(point).sub(self.mouse_pos);
     }
 
-    pub fn updatePos(self: *Self, x: i32, y: i32) void {
+    pub fn updatePos(self: *Self, x: i32, y: i32) !void {
         self.mouse_pos.x = x;
         self.mouse_pos.y = y;
     }
