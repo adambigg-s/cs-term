@@ -6,12 +6,11 @@ pub fn main() !void {
         const log = general_allocator.deinit();
         lib.std.debug.print("allocator status: {}", .{log});
     }
-    const allocator = general_allocator.allocator();
 
     var app = lib.app.Application{
         .inputs = lib.sim.Inputs.init(),
-        .simulation = try lib.sim.Simulation.init(allocator, 5),
-        .renderer = try lib.ren.Renderer.init(allocator),
+        .simulation = try lib.sim.Simulation.init(general_allocator.allocator(), 3),
+        .renderer = try lib.ren.Renderer.init(general_allocator.allocator()),
     };
     defer app.deinit();
 
