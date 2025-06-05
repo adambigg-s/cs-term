@@ -1,20 +1,26 @@
 const lib = @import("root.zig");
 const std = lib.std;
 const vec = lib.vec;
+const sim = lib.sim;
+const ren = lib.ren;
 
 pub const Application = struct {
-    inputs: lib.Inputs,
-    state: State,
-    renderer: Renderer,
-};
+    inputs: sim.Inputs,
+    simulation: sim.Simulation,
+    renderer: ren.Renderer,
 
-pub const State = struct {
-    targets: std.ArrayList(Target),
-};
+    const Self = @This();
 
-pub const Renderer = struct {};
+    pub fn run(self: *Self) void {
+        while (!self.inputs.key_escape) {
+            self.inputs.update();
 
-pub const Target = struct {
-    size: f32,
-    pos: vec.Vec3(f32),
+            std.debug.print("\x1b[20Hinputs printed: {any}", .{self.inputs});
+        }
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.simulation.deinit();
+        self.renderer.deinit();
+    }
 };

@@ -2,48 +2,8 @@ pub const win = @import("winapi.zig");
 pub const vec = @import("vector.zig");
 pub const std = @import("std");
 pub const app = @import("application.zig");
-
-pub const Inputs = struct {
-    key_w: bool = false,
-    key_a: bool = false,
-    key_s: bool = false,
-    key_d: bool = false,
-    key_escape: bool = false,
-    mouse_click: bool = false,
-    mouse_delta: vec.Vec2(i32),
-    mouse_pos: vec.Vec2(i32),
-
-    const Self = @This();
-
-    pub fn init() Self {
-        _ = win.GetAsyncKeyState(win.VK_W);
-        _ = win.GetAsyncKeyState(win.VK_A);
-        _ = win.GetAsyncKeyState(win.VK_S);
-        _ = win.GetAsyncKeyState(win.VK_D);
-        _ = win.GetAsyncKeyState(win.VK_ESCAPE);
-        _ = win.GetAsyncKeyState(win.MOUSE_LBUTTON);
-
-        return Inputs{
-            .mouse_delta = vec.Vec2(i32).zeros(),
-            .mouse_pos = vec.Vec2(i32).zeros(),
-        };
-    }
-
-    pub fn update(self: *Self) void {
-        self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WINKEYFALSE;
-        self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WINKEYFALSE;
-        self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WINKEYFALSE;
-        self.key_d = win.GetAsyncKeyState(win.VK_D) != win.WINKEYFALSE;
-        self.key_escape = win.GetAsyncKeyState(win.VK_ESCAPE) != win.WINKEYFALSE;
-        self.mouse_click = win.GetAsyncKeyState(win.MOUSE_LBUTTON) != win.WINKEYFALSE;
-
-        var point: win.WinPoint = undefined;
-        _ = win.GetCursorPos(&point);
-        const new_pos = vec2_from_point(point);
-        self.mouse_delta = new_pos.sub(self.mouse_pos);
-        self.mouse_pos = new_pos;
-    }
-};
+pub const sim = @import("simulation.zig");
+pub const ren = @import("renderer.zig");
 
 pub fn Buffer(comptime T: type) type {
     return struct {
@@ -58,7 +18,7 @@ pub fn Buffer(comptime T: type) type {
 
         pub fn init(width: usize, height: usize, allocator: Alloc, clear_value: T) !Self {
             const data = try std.ArrayList(T).initCapacity(allocator, width * height);
-            var output = Buffer{
+            var output = Buffer(T){
                 .width = width,
                 .height = height,
                 .data = data,
@@ -75,7 +35,7 @@ pub fn Buffer(comptime T: type) type {
         }
 
         pub fn clear(self: *Self) void {
-            @memset(self.data, self.clear_value);
+            @memset(self.data.items, self.clear_value);
         }
 
         pub fn get(self: *Self, x: usize, y: usize) ?T {
