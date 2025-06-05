@@ -12,28 +12,27 @@ pub const Application = struct {
 
     const Self = @This();
 
-    pub fn run(self: *Self) !void {
-        while (!self.inputs.key_escape) {
-            try self.inputs.update();
-            try self.simulation.update();
-
-            std.debug.print("\x1b[20Hinputs printed: {any}\n", .{self.inputs});
-
-            _ = win.SetCursorPos(1920, 1080);
-            const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
-            var info: win.WinConsoleInfo = undefined;
-            _ = win.GetConsoleScreenBufferInfo(handle, &info);
-
-            std.debug.print("\x1b[22Hhandle: {any}\n", .{info});
-
-            _ = self.renderer.main.set(10, 10, '#');
-
-            try self.renderer.renderScene();
-        }
-    }
-
     pub fn deinit(self: *Self) void {
         self.simulation.deinit();
         self.renderer.deinit();
+    }
+
+    pub fn run(self: *Self) !void {
+        while (!self.inputs.key_escape) {
+            try self.inputs.update();
+            _ = win.SetCursorPos(1920, 1080);
+            self.inputs.setPos(1920, 1080);
+            try self.simulation.update(&self.inputs);
+
+            self.renderer.clear();
+            self.renderer.renderSimulation(&self.simulation);
+            try self.renderer.commitPass();
+
+            std.debug.print("\x1b[20Hinputs printed: {any}\n", .{self.inputs});
+            const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
+            var info: win.WinConsoleInfo = undefined;
+            _ = win.GetConsoleScreenBufferInfo(handle, &info);
+            std.debug.print("\x1b[22Hhandle: {any}\n", .{info});
+        }
     }
 };

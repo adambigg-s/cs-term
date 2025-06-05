@@ -81,3 +81,20 @@ pub fn getTerminalDimensions() struct { usize, usize } {
 
     return .{ @as(usize, wp), @as(usize, hp) };
 }
+
+pub fn randomVec3() vec.Vec3(f32) {
+    return vec.Vec3(f32).build(
+        randomf32Distribution(),
+        randomf32Distribution(),
+        randomf32Distribution(),
+    );
+}
+
+pub fn randomf32() f32 {
+    var rng = std.Random.DefaultPrng.init(@intCast(std.time.microTimestamp()));
+    return rng.random().float(f32);
+}
+
+pub fn randomf32Distribution() f32 {
+    return randomf32() * 2 - 1;
+}

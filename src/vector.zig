@@ -55,6 +55,10 @@ pub fn Vec2(comptime T: type) type {
         pub fn normalize(self: Self) Self {
             return self.div(self.length());
         }
+
+        pub fn mulComponent(self: Self, other: Self) Self {
+            return Vec2(T).build(self.x * other.x, self.y * other.y);
+        }
     };
 }
 
@@ -155,6 +159,10 @@ pub fn Vec3(comptime T: type) type {
 
         pub fn normalize(self: Self) Self {
             return self.div(self.length());
+        }
+
+        pub fn mulComponent(self: Self, other: Self) Self {
+            return Vec3(T).build(self.x * other.x, self.y * other.y, self.z * other.z);
         }
     };
 }

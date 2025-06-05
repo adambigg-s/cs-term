@@ -1,5 +1,7 @@
 const lib = @import("root.zig");
 const std = lib.std;
+const sim = lib.sim;
+const vec = lib.vec;
 
 pub const Renderer = struct {
     main: lib.Buffer(u32),
@@ -8,14 +10,18 @@ pub const Renderer = struct {
     height: usize,
 
     const Self = @This();
-    const Infinity = 1e9;
+
+    const infinity = 1e9;
+    const epsilon = 1e-9;
+
+    const math = std.math;
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         const width, const height = lib.getTerminalDimensions();
 
         return Renderer{
             .main = try lib.Buffer(u32).init(width, height, allocator, ' '),
-            .depth = try lib.Buffer(f32).init(width, height, allocator, Self.Infinity),
+            .depth = try lib.Buffer(f32).init(width, height, allocator, Self.infinity),
             .width = width,
             .height = height,
         };
@@ -26,7 +32,67 @@ pub const Renderer = struct {
         self.depth.deinit();
     }
 
-    pub fn renderScene(self: *Self) !void {
+    pub fn clear(self: *Self) void {
+        self.main.clear();
+        self.depth.clear();
+    }
+
+    pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
+        for (simulation.targets.items) |target| {
+            self.renderSquare(simulation.player, target.pos, target.size);
+        }
+    }
+
+    // temporary just to see if working
+    fn renderSquare(self: *Self, viewmodel: sim.Player, position: vec.Vec3(f32), size: f32) void {
+        const fov = 1;
+        const to_target = position.sub(viewmodel.pos);
+        const dist = to_target.length();
+
+        if (dist < Self.epsilon) {
+            return;
+        }
+
+        const cam_x = to_target.inner_product(viewmodel.right);
+        const cam_y = to_target.inner_product(viewmodel.up);
+        const cam_z = to_target.inner_product(viewmodel.front);
+
+        if (cam_z < 0.1) {
+            return;
+        }
+
+        const screen_x = (cam_x / (cam_z * fov)) * @as(f32, @floatFromInt(self.width)) / 2 + @as(f32, @floatFromInt(self.width)) / 2;
+        const screen_y = (-cam_y / (cam_z * fov)) * @as(f32, @floatFromInt(self.height)) / 2 + @as(f32, @floatFromInt(self.height)) / 2;
+
+        const half_size = size / cam_z * 10;
+        const int_half_size: isize = @intFromFloat(half_size);
+
+        const center_x: isize = @intFromFloat(screen_x);
+        const center_y: isize = @intFromFloat(screen_y);
+
+        var dy = -int_half_size;
+        while (dy <= int_half_size) : (dy += 1) {
+            var dx = -int_half_size;
+            while (dx <= int_half_size) : (dx += 1) {
+                const x = center_x + dx;
+                const y = center_y + dy;
+
+                if (x < 0 or y < 0 or x >= self.width or y >= self.height) {
+                    continue;
+                }
+
+                const bx: usize, const by: usize = .{ @bitCast(x), @bitCast(y) };
+                const curr_depth = self.depth.get(bx, by) orelse Self.infinity;
+
+                if (dist < curr_depth) {
+                    _ = self.main.set(bx, by, '*');
+                    _ = self.depth.set(bx, by, dist);
+                }
+            }
+        }
+    }
+
+    pub fn commitPass(self: *Self) !void {
         var stdout = std.io.getStdOut();
         var buffer_writer = std.io.bufferedWriter(stdout.writer());
         const writer = buffer_writer.writer();
