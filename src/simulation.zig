@@ -49,6 +49,10 @@ pub const Player = struct {
     world_up: vec.Vec3(f32),
     pitch: f32,
     yaw: f32,
+    look_sensitivity: f32,
+    yaw_modifier: f32,
+    pitch_modifier: f32,
+    move_speed: f32,
 
     const Self = @This();
 
@@ -63,34 +67,49 @@ pub const Player = struct {
             .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
+            .look_sensitivity = 2.5,
+            .yaw_modifier = 0.01,
+            .pitch_modifier = 0.01,
+            .move_speed = 0.03,
         };
     }
 
-    // temporary just to see if working
     pub fn update(self: *Self, inputs: *Inputs) void {
-        const sense = 0.002;
-        const speed = 0.01;
-
-        self.yaw += @as(f32, @floatFromInt(inputs.mouse_delta.x)) * sense;
-        self.pitch -= @as(f32, @floatFromInt(inputs.mouse_delta.y)) * sense;
-
-        if (inputs.key_w) {
-            self.pos = self.pos.add(self.front.mul(speed));
-        }
-        if (inputs.key_s) {
-            self.pos = self.pos.sub(self.front.mul(speed));
-        }
-        if (inputs.key_a) {
-            self.pos = self.pos.sub(self.right.mul(speed));
-        }
-        if (inputs.key_d) {
-            self.pos = self.pos.add(self.right.mul(speed));
-        }
-
+        self.updateTranslation(inputs);
+        self.updateRotation(inputs);
         self.updateVectors();
     }
 
-    pub fn updateVectors(self: *Self) void {
+    fn updateTranslation(self: *Self, inputs: *Inputs) void {
+        if (inputs.key_w) {
+            self.pos = self.pos.add(self.front.mul(self.move_speed));
+        }
+        if (inputs.key_s) {
+            self.pos = self.pos.sub(self.front.mul(self.move_speed));
+        }
+        if (inputs.key_a) {
+            self.pos = self.pos.sub(self.right.mul(self.move_speed));
+        }
+        if (inputs.key_d) {
+            self.pos = self.pos.add(self.right.mul(self.move_speed));
+        }
+    }
+
+    fn updateRotation(self: *Self, inputs: *Inputs) void {
+        const mouse_dx: f32, const mouse_dy: f32 = .{
+            @floatFromInt(inputs.mouse_delta.x),
+            @floatFromInt(inputs.mouse_delta.y),
+        };
+        const yaw_delta, const pitch_delta = .{
+            mouse_dx * self.look_sensitivity * self.yaw_modifier,
+            mouse_dy * self.look_sensitivity * self.pitch_modifier,
+        };
+
+        self.yaw += math.degreesToRadians(yaw_delta);
+        self.pitch -= math.degreesToRadians(pitch_delta);
+    }
+
+    fn updateVectors(self: *Self) void {
         self.front = vec.Vec3(f32).build(
             math.cos(self.yaw) * math.cos(self.pitch),
             math.sin(self.pitch),
@@ -98,7 +117,9 @@ pub const Player = struct {
         );
         self.front = self.front.normalize();
         self.right = self.front.cross_product(self.world_up).normalize();
+        self.right = self.right.normalize();
         self.up = self.right.cross_product(self.front).normalize();
+        self.up = self.up.normalize();
     }
 };
 
