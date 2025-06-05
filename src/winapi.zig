@@ -19,7 +19,7 @@ pub fn hideCursor() void {
 pub const WinBool = i32;
 pub const WinInt = i32;
 pub const WinKeyReturn = i16;
-pub const WinDWord = i16;
+pub const WinDWord = u32;
 pub const WinHandle = *opaque {};
 pub const WinShort = i16;
 
@@ -82,10 +82,13 @@ pub extern "User32" fn SetCursorPos(x: WinInt, y: WinInt) WinBool;
 pub extern "User32" fn GetAsyncKeyState(virtual_key: WinInt) WinKeyReturn;
 
 // https://learn.microsoft.com/en-us/windows/console/getstdhandle
-pub extern "Kernel32" fn GetStdHandle(std_handle: WinDWord) WinHandle;
+pub extern "Kernel32" fn GetStdHandle(std_handle: WinInt) WinHandle;
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showcursor
 extern "User32" fn ShowCursor(toggle_show: WinBool) WinInt;
+
+// https://learn.microsoft.com/en-us/windows/console/getconsolefontsize
+pub extern "Kernel32" fn GetConsoleFontSize(console_handle: WinHandle, font_index: WinDWord) WinCoord;
 
 // https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo
 pub extern "Kernel32" fn GetConsoleScreenBufferInfo(
@@ -94,8 +97,9 @@ pub extern "Kernel32" fn GetConsoleScreenBufferInfo(
 ) WinBool;
 
 // https://learn.microsoft.com/en-us/windows/console/getcurrentconsolefont
-pub extern "Kernal32" fn GetCurrentConsoleFont(
-    std_handle: WinDWord,
+pub extern "Kernel32" fn GetCurrentConsoleFont(
+    console_handle: WinHandle,
     max_window: WinBool,
-    *WinConsoleFontInfo,
+    font_info: *WinConsoleFontInfo,
 ) WinBool;
+
