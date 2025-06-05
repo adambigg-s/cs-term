@@ -1,6 +1,6 @@
 const lib = @import("root.zig");
 const std = lib.std;
-const vec = lib.std;
+const vec = lib.vec;
 const win = lib.win;
 
 pub const Simulation = struct {
@@ -17,6 +17,19 @@ pub const Simulation = struct {
     pub fn deinit(self: *Self) void {
         self.targets.deinit();
     }
+};
+
+pub const Player = struct {
+    pos: vec.Vec3(f32),
+    front: vec.Vec3(f32),
+    right: vec.Vec3(f32),
+    up: vec.Vec3(f32),
+    pitch: f32,
+    yaw: f32,
+
+    const Self = @This();
+
+    pub fn updateVectors(_: *Self) void {}
 };
 
 pub const Inputs = struct {
@@ -46,16 +59,16 @@ pub const Inputs = struct {
     }
 
     pub fn update(self: *Self) void {
-        self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WINKEYFALSE;
-        self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WINKEYFALSE;
-        self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WINKEYFALSE;
-        self.key_d = win.GetAsyncKeyState(win.VK_D) != win.WINKEYFALSE;
-        self.key_escape = win.GetAsyncKeyState(win.VK_ESCAPE) != win.WINKEYFALSE;
-        self.mouse_click = win.GetAsyncKeyState(win.MOUSE_LBUTTON) != win.WINKEYFALSE;
+        self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WIN_KEY_FALSE;
+        self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WIN_KEY_FALSE;
+        self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WIN_KEY_FALSE;
+        self.key_d = win.GetAsyncKeyState(win.VK_D) != win.WIN_KEY_FALSE;
+        self.key_escape = win.GetAsyncKeyState(win.VK_ESCAPE) != win.WIN_KEY_FALSE;
+        self.mouse_click = win.GetAsyncKeyState(win.MOUSE_LBUTTON) != win.WIN_KEY_FALSE;
 
         var point: win.WinPoint = undefined;
         _ = win.GetCursorPos(&point);
-        const new_pos = lib.vec2_from_point(point);
+        const new_pos = lib.vec2FromPoint(point);
         self.mouse_delta = new_pos.sub(self.mouse_pos);
         self.mouse_pos = new_pos;
     }

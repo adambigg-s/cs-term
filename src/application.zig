@@ -3,6 +3,7 @@ const std = lib.std;
 const vec = lib.vec;
 const sim = lib.sim;
 const ren = lib.ren;
+const win = lib.win;
 
 pub const Application = struct {
     inputs: sim.Inputs,
@@ -15,7 +16,9 @@ pub const Application = struct {
         while (!self.inputs.key_escape) {
             self.inputs.update();
 
-            std.debug.print("\x1b[20Hinputs printed: {any}", .{self.inputs});
+            std.debug.print("\x1b[20Hinputs printed: {any}\n", .{self.inputs});
+
+            _ = win.SetCursorPos(1920, 1080);
         }
     }
 

@@ -65,6 +65,6 @@ pub fn Buffer(comptime T: type) type {
     };
 }
 
-pub fn vec2_from_point(point: win.WinPoint) vec.Vec2(i32) {
+pub fn vec2FromPoint(point: win.WinPoint) vec.Vec2(i32) {
     return vec.Vec2(i32).build(point.x, point.y);
 }
