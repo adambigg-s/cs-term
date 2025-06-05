@@ -15,6 +15,10 @@ pub fn Vec2(comptime T: type) type {
             return Vec2(T).build(0, 0);
         }
 
+        pub fn splat(value: T) Self {
+            return Vec2(T).build(value, value);
+        }
+
         pub fn neg(self: Self) Self {
             return Vec2(T).build(-self.x, -self.y);
         }
@@ -76,6 +80,10 @@ pub fn Vec3(comptime T: type) type {
 
         pub fn zeros() Self {
             return Vec3(T).build(0, 0, 0);
+        }
+
+        pub fn splat(value: T) Self {
+            return Vec3(T).build(value, value, value);
         }
 
         pub fn neg(self: Self) Self {
