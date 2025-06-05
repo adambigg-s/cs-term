@@ -44,6 +44,11 @@ pub const Application = struct {
                 handle = win.GetStdHandle(win.WIN_STD_HANDLE);
                 const font_size = win.GetConsoleFontSize(handle, font_info.font_index);
                 std.debug.print("\x1b[24Hfont size: {any}\n", .{font_size});
+                handle = win.GetStdHandle(win.WIN_STD_HANDLE);
+                var font_info_ex: win.WinConsoleFontInfoEx = undefined;
+                font_info_ex.size_of = @sizeOf(win.WinConsoleFontInfoEx);
+                _ = win.GetCurrentConsoleFontEx(handle, win.WIN_CONSOLE_CURRENT, &font_info_ex);
+                std.debug.print("\x1b[25Hfont size: {any}\n", .{font_info_ex});
             }
         }
     }

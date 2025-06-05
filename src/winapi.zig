@@ -22,6 +22,7 @@ pub const WinKeyReturn = i16;
 pub const WinDWord = u32;
 pub const WinHandle = *opaque {};
 pub const WinShort = i16;
+pub const WinLong = i32;
 
 // https://learn.microsoft.com/en-us/windows/console/getstdhandle
 pub const WIN_STD_HANDLE = -11;
@@ -57,6 +58,14 @@ pub const WinSmallRect = extern struct {
     bottom: WinShort,
 };
 
+// https://learn.microsoft.com/en-us/windows/win32/api/windef/ns-windef-rect
+pub const WinLongRect = extern struct {
+    left: WinLong,
+    top: WinLong,
+    right: WinLong,
+    bottom: WinLong,
+};
+
 // https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo
 pub const WinConsoleInfo = extern struct {
     window_size: WinCoord,
@@ -70,6 +79,16 @@ pub const WinConsoleInfo = extern struct {
 pub const WinConsoleFontInfo = extern struct {
     font_index: WinDWord,
     font_char_size: WinCoord,
+};
+
+// https://learn.microsoft.com/en-us/windows/console/console-font-infoex
+pub const WinConsoleFontInfoEx = extern struct {
+    size_of: WinDWord,
+    font_index: WinDWord,
+    font_size: WinCoord,
+    font_family: WinDWord,
+    font_weight: WinDWord,
+    face_name: [32]u16,
 };
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos
@@ -90,6 +109,9 @@ extern "User32" fn ShowCursor(toggle_show: WinBool) WinInt;
 // https://learn.microsoft.com/en-us/windows/console/getconsolefontsize
 pub extern "Kernel32" fn GetConsoleFontSize(console_handle: WinHandle, font_index: WinDWord) WinCoord;
 
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect
+pub extern "User32" fn GetWindowRect(window_handle: WinHandle, rectangle: *WinLongRect) WinBool;
+
 // https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo
 pub extern "Kernel32" fn GetConsoleScreenBufferInfo(
     console_handle: WinHandle,
@@ -103,3 +125,9 @@ pub extern "Kernel32" fn GetCurrentConsoleFont(
     font_info: *WinConsoleFontInfo,
 ) WinBool;
 
+// https://learn.microsoft.com/en-us/windows/console/getcurrentconsolefontex
+pub extern "Kernel32" fn GetCurrentConsoleFontEx(
+    console_handle: WinHandle,
+    max_window: WinBool,
+    font_info: *WinConsoleFontInfoEx,
+) WinBool;
