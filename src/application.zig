@@ -19,6 +19,11 @@ pub const Application = struct {
             std.debug.print("\x1b[20Hinputs printed: {any}\n", .{self.inputs});
 
             _ = win.SetCursorPos(1920, 1080);
+            const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
+            var info: win.WinConsoleInfo = undefined;
+            _ = win.GetConsoleScreenBufferInfo(handle, &info);
+
+            std.debug.print("\x1b[22Hhandle: {any}\n", .{info});
         }
     }
 

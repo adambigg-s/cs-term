@@ -7,8 +7,8 @@
 pub const WinBool = i32;
 pub const WinInt = i32;
 pub const WinKeyReturn = i16;
-pub const WinDWord = u16;
-pub const WinHandle = *anyopaque{};
+pub const WinDWord = i16;
+pub const WinHandle = *opaque {};
 pub const WinShort = i16;
 
 // https://learn.microsoft.com/en-us/windows/console/getstdhandle
@@ -62,10 +62,10 @@ pub extern "User32" fn SetCursorPos(x: WinInt, y: WinInt) WinBool;
 pub extern "User32" fn GetAsyncKeyState(virtual_key: WinInt) WinKeyReturn;
 
 // https://learn.microsoft.com/en-us/windows/console/getstdhandle
-pub extern "Kernal32" fn GetStdHandle(std_handle: WinDWord) WinHandle;
+pub extern "Kernel32" fn GetStdHandle(std_handle: WinDWord) WinHandle;
 
 // https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo
-pub extern "Kernal32" fn GetConsoleScreenBufferInfo(
+pub extern "Kernel32" fn GetConsoleScreenBufferInfo(
     console_handle: WinHandle,
     console_info: *WinConsoleInfo,
 ) WinBool;
