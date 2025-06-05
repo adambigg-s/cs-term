@@ -39,21 +39,32 @@ pub const Renderer = struct {
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
         for (simulation.targets.items) |target| {
-            self.renderSquare(simulation.player, target.pos, target.size);
+            self.renderBillboardCircle(simulation.player, target.pos, target.size);
         }
     }
 
-    // temporary just to see if working
-    fn renderSquare(self: *Self, viewmodel: sim.Player, position: vec.Vec3(f32), size: f32) void {
+    fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
+        return .{ @as(f32, @floatFromInt(self.width)) / 2, @as(f32, @floatFromInt(self.height)) / 2 };
+    }
+
+    fn renderBillboardCircle(self: *Self, viewmodel: sim.Player, position: vec.Vec3(f32), size: f32) void {
         const tan_half_fov = math.tan(viewmodel.fov / 2);
         const to_target = position.sub(viewmodel.pos);
         const distance = to_target.length();
         if (distance < Self.epsilon) return;
-        const dcx, const dcy, const dcz = to_target.directionCosineMat(
+        const dcx, const dcy, const dcz = to_target.directionCosineVec(
             viewmodel.right,
             viewmodel.up,
             viewmodel.front,
         );
+        if (dcz < Self.epsilon) return;
+        const half_width, const half_height = self.halfDimensionsFloat();
+        const screenx = (dcx / (dcz * tan_half_fov)) * half_width + half_width;
+        const screeny = (-dcy / (dcz * tan_half_fov)) * half_height + half_height;
+
+        // just to see if it will compile before i log off
+        _, _ = .{ screenx, screeny };
+        _ = size;
     }
 
     pub fn commitPass(self: *Self) !void {
