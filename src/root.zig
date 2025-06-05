@@ -67,8 +67,13 @@ pub fn Buffer(comptime T: type) type {
     };
 }
 
-pub fn vec2FromPoint(point: win.WinPoint) vec.Vec2(i32) {
-    return vec.Vec2(i32).build(point.x, point.y);
+pub fn randomf32() f32 {
+    var rng = std.Random.DefaultPrng.init(@intCast(std.time.microTimestamp()));
+    return rng.random().float(f32);
+}
+
+pub fn randomf32Distribution() f32 {
+    return randomf32() * 2 - 1;
 }
 
 pub fn getTerminalDimensions() struct { usize, usize } {
@@ -76,13 +81,13 @@ pub fn getTerminalDimensions() struct { usize, usize } {
     const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
     _ = win.GetConsoleScreenBufferInfo(handle, &console_info);
 
-    const width, const height = .{
+    const width_signed, const height_signed = .{
         console_info.window_size.x - 1,
         console_info.window_size.y - 1,
     };
-    const wp: u16, const hp: u16 = .{ @bitCast(width), @bitCast(height) };
+    const width: u16, const height: u16 = .{ @bitCast(width_signed), @bitCast(height_signed) };
 
-    return .{ @as(usize, wp), @as(usize, hp) };
+    return .{ @as(usize, width), @as(usize, height) };
 }
 
 pub fn randomVec3() vec.Vec3(f32) {
@@ -93,11 +98,7 @@ pub fn randomVec3() vec.Vec3(f32) {
     );
 }
 
-pub fn randomf32() f32 {
-    var rng = std.Random.DefaultPrng.init(@intCast(std.time.microTimestamp()));
-    return rng.random().float(f32);
+pub fn vec2FromPoint(point: win.WinPoint) vec.Vec2(i32) {
+    return vec.Vec2(i32).build(point.x, point.y);
 }
 
-pub fn randomf32Distribution() f32 {
-    return randomf32() * 2 - 1;
-}

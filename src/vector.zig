@@ -172,5 +172,13 @@ pub fn Vec3(comptime T: type) type {
         pub fn mulComponent(self: Self, other: Self) Self {
             return Vec3(T).build(self.x * other.x, self.y * other.y, self.z * other.z);
         }
+
+        pub fn directionCosineMat(self: Self, xp: self, yp: Self, zp: Self) struct { Self, Self, Self } {
+            return .{
+                self.inner_product(xp),
+                self.inner_product(yp),
+                self.inner_product(zp),
+            };
+        }
     };
 }

@@ -49,6 +49,7 @@ pub const Player = struct {
     world_up: vec.Vec3(f32),
     pitch: f32,
     yaw: f32,
+    fov: f32,
     look_sensitivity: f32,
     yaw_modifier: f32,
     pitch_modifier: f32,
@@ -67,6 +68,7 @@ pub const Player = struct {
             .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
+            .fov = math.degreesToRadians(90),
             .look_sensitivity = 2.5,
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,
@@ -115,10 +117,11 @@ pub const Player = struct {
             math.sin(self.pitch),
             math.sin(self.yaw) * math.cos(self.pitch),
         );
+        self.right = self.front.cross_product(self.world_up);
+        self.up = self.right.cross_product(self.front);
+
         self.front = self.front.normalize();
-        self.right = self.front.cross_product(self.world_up).normalize();
         self.right = self.right.normalize();
-        self.up = self.right.cross_product(self.front).normalize();
         self.up = self.up.normalize();
     }
 };
