@@ -1,3 +1,5 @@
+pub const math = @import("std").math;
+
 pub fn Vec2(comptime T: type) type {
     return struct {
         x: T,
@@ -32,6 +34,22 @@ pub fn Vec2(comptime T: type) type {
         pub fn div(self: Self, scalar: T) Self {
             const inv = 1 / scalar;
             return Vec2(T).build(self.x * inv, self.y * inv);
+        }
+
+        pub fn inner_product(self: Self, other: Self) T {
+            return self.x * other.x + self.y * other.y;
+        }
+
+        pub fn cross_product(self: Self, other: Self) T {
+            return self.x * other.y - self.y * other.x;
+        }
+
+        pub fn length_sq(self: Self) T {
+            return self.inner_product(self);
+        }
+
+        pub fn length(self: Self) T {
+            return math.sqrt(self.length_sq());
         }
     };
 }
@@ -71,6 +89,64 @@ pub fn Vec3(comptime T: type) type {
         pub fn div(self: Self, scalar: T) Self {
             const inv = 1 / scalar;
             return Vec3(T).build(self.x * inv, self.y * inv, self.z * inv);
+        }
+
+        pub fn inner_product(self: Self, other: Self) T {
+            return self.x * other.x + self.y * other.y + self.z * other.z;
+        }
+
+        pub fn cross_product(self: Self, other: Self) Self {
+            return Vec3(T).build(
+                self.y * other.z - self.z * other.y,
+                self.x * other.z - self.z * other.x,
+                self.x * other.y - self.y * other.x,
+            );
+        }
+
+        pub fn length_sq(self: Self) T {
+            return self.inner_product(self);
+        }
+
+        pub fn length(self: Self) T {
+            return math.sqrt(self.length_sq());
+        }
+
+        pub fn rotateX(self: Self, angle: T) Self {
+            const sin, const cos = .{ math.sin(angle), math.cos(angle) };
+
+            return Vec3(T).build(
+                self.x,
+                self.y * cos + self.z * -sin,
+                self.y * sin + self.z * cos,
+            );
+        }
+
+        pub fn rotateY(self: Self, angle: T) Self {
+            const sin, const cos = .{ math.sin(angle), math.cos(angle) };
+
+            return Vec3(T).build(
+                self.x * cos + self.z * sin,
+                self.y,
+                self.x * -sin + self.z * cos,
+            );
+        }
+
+        pub fn rotateZ(self: Self, angle: T) Self {
+            const sin, const cos = .{ math.sin(angle), math.cos(angle) };
+
+            return Vec3(T).build(
+                self.x * cos + self.y * -sin,
+                self.x * sin + self.y * cos,
+                self.z,
+            );
+        }
+
+        pub fn rotateXYZ(self: Self, angles: Self) Self {
+            return self.rotateX(angles.x).rotateY(angles.y).rotateZ(angles.z);
+        }
+
+        pub fn rotateZYX(self: Self, angles: Self) Self {
+            return self.rotateZ(angles.z).rotateY(angles.y).rotateX(angles.x);
         }
     };
 }
