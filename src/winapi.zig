@@ -3,46 +3,83 @@
 // small and there isn't any terminal library powerful enough yet for this so i
 // am just using Windows API direct
 
+pub const WinError = error{
+    NullResponse,
+};
+
 pub fn showCursor() void {
-    while (ShowCursor(WIN_NOT_FALSE) < 0) {
+    while (ShowCursor(win_not_false) < 0) {
         continue;
     }
 }
 
 pub fn hideCursor() void {
-    while (ShowCursor(WIN_FALSE) >= 0) {
+    while (ShowCursor(win_false) >= 0) {
         continue;
     }
 }
 
-// https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types
-pub const WinBool = i32;
-pub const WinInt = i32;
-pub const WinKeyReturn = i16;
-pub const WinDWord = u32;
-pub const WinHandle = *opaque {};
-pub const WinShort = i16;
-pub const WinLong = i32;
+pub fn getCursorPosition() !struct { i32, i32 } {
+    var point: WinPoint = undefined;
+    const response = GetCursorPos(&point);
+    if (response == win_false) {
+        return WinError.NullResponse;
+    }
 
-// https://learn.microsoft.com/en-us/windows/console/getstdhandle
-pub const WIN_STD_HANDLE = -11;
+    return .{ @intCast(point.x), @intCast(point.y) };
+}
 
-pub const WIN_FALSE: WinBool = 0;
-pub const WIN_NOT_FALSE: WinBool = 999999;
-pub const WIN_KEY_FALSE: WinKeyReturn = 0;
-pub const WIN_CONSOLE_CURRENT: WinBool = WIN_FALSE;
+pub fn getTerminalDimensions() !struct { usize, usize } {
+    var console_info: WinConsoleInfo = undefined;
+    const handle = GetStdHandle(win_std_handle);
+    const response = GetConsoleScreenBufferInfo(handle, &console_info);
+    if (response == win_false) {
+        return WinError.NullResponse;
+    }
 
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
-pub const MOUSE_LBUTTON = 0x01;
-pub const VK_ESCAPE = 0x1b;
-pub const VK_W = 0x57;
-pub const VK_A = 0x41;
-pub const VK_S = 0x53;
-pub const VK_D = 0x44;
+    const width_signed, const height_signed = .{
+        console_info.window_size.x - 1,
+        console_info.window_size.y - 1,
+    };
+    const width: u16, const height: u16 = .{ @bitCast(width_signed), @bitCast(height_signed) };
+
+    return .{ @as(usize, width), @as(usize, height) };
+}
+
+pub fn setCursorPos(x: usize, y: usize) !void {
+    const response = SetCursorPos(@intCast(x), @intCast(y));
+    if (response == win_false) {
+        return WinError.NullResponse;
+    }
+}
+
+pub fn getSTDHandle() !WinHandle {
+    const response = GetStdHandle(win_std_handle);
+    if (response == null) {
+        return WinError.NullResponse;
+    }
+
+    return response;
+}
+
+pub fn getConsoleScreenBufferInfo() !WinConsoleInfo {
+    const handle = try getSTDHandle();
+    var info: WinConsoleFontInfo = undefined;
+    const response = GetConsoleScreenBufferInfo(handle, &info);
+    if (response == win_false) {
+        return WinError.NullResponse;
+    }
+
+    return info;
+}
+
+pub fn getKeyState(key_code: comptime_int) bool {
+    return GetAsyncKeyState(@intCast(key_code)) != win_false;
+}
 
 pub const WinPoint = extern struct {
-    x: i32,
-    y: i32,
+    x: WinInt,
+    y: WinInt,
 };
 
 pub const WinCoord = extern struct {
@@ -91,42 +128,67 @@ pub const WinConsoleFontInfoEx = extern struct {
     face_name: [32]u16,
 };
 
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos
-pub extern "User32" fn GetCursorPos(point: *WinPoint) WinBool;
-
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcursorpos
-pub extern "User32" fn SetCursorPos(x: WinInt, y: WinInt) WinBool;
-
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
-pub extern "User32" fn GetAsyncKeyState(virtual_key: WinInt) WinKeyReturn;
+pub const vk_mouse_lbutton = 0x01;
+pub const vk_escape = 0x1b;
+pub const vk_w = 0x57;
+pub const vk_a = 0x41;
+pub const vk_s = 0x53;
+pub const vk_d = 0x44;
+
+// https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types
+const WinBool = i32;
+const WinInt = i32;
+const WinKeyReturn = i16;
+const WinDWord = u32;
+const WinHandle = *opaque {};
+const WinShort = i16;
+const WinLong = i32;
 
 // https://learn.microsoft.com/en-us/windows/console/getstdhandle
-pub extern "Kernel32" fn GetStdHandle(std_handle: WinInt) WinHandle;
+const win_std_handle = -11;
+
+const win_false: WinBool = 0;
+const win_not_false: WinBool = 999999;
+const win_key_false: WinKeyReturn = 0;
+const win_console_current: WinBool = win_false;
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos
+extern "User32" fn GetCursorPos(point: *WinPoint) WinBool;
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcursorpos
+extern "User32" fn SetCursorPos(x: WinInt, y: WinInt) WinBool;
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+extern "User32" fn GetAsyncKeyState(virtual_key: WinInt) WinKeyReturn;
+
+// https://learn.microsoft.com/en-us/windows/console/getstdhandle
+extern "Kernel32" fn GetStdHandle(std_handle: WinInt) WinHandle;
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showcursor
 extern "User32" fn ShowCursor(toggle_show: WinBool) WinInt;
 
 // https://learn.microsoft.com/en-us/windows/console/getconsolefontsize
-pub extern "Kernel32" fn GetConsoleFontSize(console_handle: WinHandle, font_index: WinDWord) WinCoord;
+extern "Kernel32" fn GetConsoleFontSize(console_handle: WinHandle, font_index: WinDWord) WinCoord;
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect
-pub extern "User32" fn GetWindowRect(window_handle: WinHandle, rectangle: *WinLongRect) WinBool;
+extern "User32" fn GetWindowRect(window_handle: WinHandle, rectangle: *WinLongRect) WinBool;
 
 // https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo
-pub extern "Kernel32" fn GetConsoleScreenBufferInfo(
+extern "Kernel32" fn GetConsoleScreenBufferInfo(
     console_handle: WinHandle,
     console_info: *WinConsoleInfo,
 ) WinBool;
 
 // https://learn.microsoft.com/en-us/windows/console/getcurrentconsolefont
-pub extern "Kernel32" fn GetCurrentConsoleFont(
+extern "Kernel32" fn GetCurrentConsoleFont(
     console_handle: WinHandle,
     max_window: WinBool,
     font_info: *WinConsoleFontInfo,
 ) WinBool;
 
 // https://learn.microsoft.com/en-us/windows/console/getcurrentconsolefontex
-pub extern "Kernel32" fn GetCurrentConsoleFontEx(
+extern "Kernel32" fn GetCurrentConsoleFontEx(
     console_handle: WinHandle,
     max_window: WinBool,
     font_info: *WinConsoleFontInfoEx,

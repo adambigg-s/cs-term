@@ -2,6 +2,7 @@ const lib = @import("root.zig");
 const std = lib.std;
 const sim = lib.sim;
 const vec = lib.vec;
+const win = lib.win;
 
 pub const Renderer = struct {
     main: lib.Buffer(u32),
@@ -17,7 +18,7 @@ pub const Renderer = struct {
     const math = std.math;
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        const width, const height = lib.getTerminalDimensions();
+        const width, const height = try win.getTerminalDimensions();
 
         return Renderer{
             .main = try lib.Buffer(u32).init(width, height, allocator, ' '),
@@ -71,7 +72,7 @@ pub const Renderer = struct {
         var stdout = std.io.getStdOut();
         var buffer_writer = std.io.bufferedWriter(stdout.writer());
         const writer = buffer_writer.writer();
-        _ = try buffer_writer.write("\x1b[H");
+        try writer.writeAll("\x1b[H");
         for (0..self.height) |y| {
             for (0..self.width) |x| {
                 const data = self.main.get(x, y).?;

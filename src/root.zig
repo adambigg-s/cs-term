@@ -76,20 +76,6 @@ pub fn randomf32Distribution() f32 {
     return randomf32() * 2 - 1;
 }
 
-pub fn getTerminalDimensions() struct { usize, usize } {
-    var console_info: win.WinConsoleInfo = undefined;
-    const handle = win.GetStdHandle(win.WIN_STD_HANDLE);
-    _ = win.GetConsoleScreenBufferInfo(handle, &console_info);
-
-    const width_signed, const height_signed = .{
-        console_info.window_size.x - 1,
-        console_info.window_size.y - 1,
-    };
-    const width: u16, const height: u16 = .{ @bitCast(width_signed), @bitCast(height_signed) };
-
-    return .{ @as(usize, width), @as(usize, height) };
-}
-
 pub fn randomVec3() vec.Vec3(f32) {
     return vec.Vec3(f32).build(
         randomf32Distribution(),
@@ -97,8 +83,3 @@ pub fn randomVec3() vec.Vec3(f32) {
         randomf32Distribution(),
     );
 }
-
-pub fn vec2FromPoint(point: win.WinPoint) vec.Vec2(i32) {
-    return vec.Vec2(i32).build(point.x, point.y);
-}
-

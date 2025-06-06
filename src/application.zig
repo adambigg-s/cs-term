@@ -22,7 +22,7 @@ pub const Application = struct {
             try self.inputs.updateDeltas();
             try self.inputs.updateKeys();
             try self.inputs.updatePos(1920, 1080);
-            _ = win.SetCursorPos(1920, 1080);
+            try win.setCursorPos(1920, 1080);
 
             try self.simulation.update(&self.inputs);
 
@@ -31,25 +31,7 @@ pub const Application = struct {
             try self.renderer.commitPass();
 
             // debugging stuff
-            {
-                std.debug.print("\x1b[20Hinputs printed: {any}\n", .{self.inputs});
-                var handle = win.GetStdHandle(win.WIN_STD_HANDLE);
-                var info: win.WinConsoleInfo = undefined;
-                _ = win.GetConsoleScreenBufferInfo(handle, &info);
-                std.debug.print("\x1b[22Hhandle: {any}\n", .{info});
-                var font_info: win.WinConsoleFontInfo = undefined;
-                handle = win.GetStdHandle(win.WIN_STD_HANDLE);
-                _ = win.GetCurrentConsoleFont(handle, win.WIN_CONSOLE_CURRENT, &font_info);
-                std.debug.print("\x1b[23Hfont: {any}\n", .{font_info});
-                handle = win.GetStdHandle(win.WIN_STD_HANDLE);
-                const font_size = win.GetConsoleFontSize(handle, font_info.font_index);
-                std.debug.print("\x1b[24Hfont size: {any}\n", .{font_size});
-                handle = win.GetStdHandle(win.WIN_STD_HANDLE);
-                var font_info_ex: win.WinConsoleFontInfoEx = undefined;
-                font_info_ex.size_of = @sizeOf(win.WinConsoleFontInfoEx);
-                _ = win.GetCurrentConsoleFontEx(handle, win.WIN_CONSOLE_CURRENT, &font_info_ex);
-                std.debug.print("\x1b[25Hfont size: {any}\n", .{font_info_ex});
-            }
+            {}
         }
     }
 };

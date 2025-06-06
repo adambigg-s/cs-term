@@ -144,12 +144,13 @@ pub const Inputs = struct {
     const Self = @This();
 
     pub fn init() Self {
-        _ = win.GetAsyncKeyState(win.VK_W);
-        _ = win.GetAsyncKeyState(win.VK_A);
-        _ = win.GetAsyncKeyState(win.VK_S);
-        _ = win.GetAsyncKeyState(win.VK_D);
-        _ = win.GetAsyncKeyState(win.VK_ESCAPE);
-        _ = win.GetAsyncKeyState(win.MOUSE_LBUTTON);
+        // this prevents bugs where the first call is ub
+        _ = win.getKeyState(win.vk_w);
+        _ = win.getKeyState(win.vk_a);
+        _ = win.getKeyState(win.vk_s);
+        _ = win.getKeyState(win.vk_d);
+        _ = win.getKeyState(win.vk_escape);
+        _ = win.getKeyState(win.vk_mouse_lbutton);
 
         return Inputs{
             .mouse_delta = vec.Vec2(i32).zeros(),
@@ -157,22 +158,21 @@ pub const Inputs = struct {
         };
     }
 
-    pub fn updateKeys(self: *Self) !void {
-        self.key_w = win.GetAsyncKeyState(win.VK_W) != win.WIN_KEY_FALSE;
-        self.key_a = win.GetAsyncKeyState(win.VK_A) != win.WIN_KEY_FALSE;
-        self.key_s = win.GetAsyncKeyState(win.VK_S) != win.WIN_KEY_FALSE;
-        self.key_d = win.GetAsyncKeyState(win.VK_D) != win.WIN_KEY_FALSE;
-        self.key_escape = win.GetAsyncKeyState(win.VK_ESCAPE) != win.WIN_KEY_FALSE;
-        self.mouse_click = win.GetAsyncKeyState(win.MOUSE_LBUTTON) != win.WIN_KEY_FALSE;
+    pub fn updateKeys(self: *Self) void {
+        self.key_w = win.getKeyState(win.vk_w);
+        self.key_a = win.getKeyState(win.vk_a);
+        self.key_s = win.getKeyState(win.vk_s);
+        self.key_d = win.getKeyState(win.vk_d);
+        self.key_escape = win.getKeyState(win.vk_escape);
+        self.mouse_click = win.getKeyState(win.vk_mouse_lbutton);
     }
 
     pub fn updateDeltas(self: *Self) !void {
-        var point: win.WinPoint = undefined;
-        _ = win.GetCursorPos(&point);
-        self.mouse_delta = lib.vec2FromPoint(point).sub(self.mouse_pos);
+        const x, const y = try win.getCursorPosition();
+        self.mouse_delta = vec.Vec2(i32).build(x, y).sub(self.mouse_pos);
     }
 
-    pub fn updatePos(self: *Self, x: i32, y: i32) !void {
+    pub fn updatePos(self: *Self, x: i32, y: i32) void {
         self.mouse_pos.x = x;
         self.mouse_pos.y = y;
     }
