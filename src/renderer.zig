@@ -49,26 +49,30 @@ pub const Renderer = struct {
         for (simulation.targets.items) |target| {
             self.renderDebugAmpersand(&simulation.player, target.pos, target.size);
         }
-        self.renderClippedLine(
-            &simulation.player,
-            vec.Vec3(f32).build(10, 100, 10),
-            vec.Vec3(f32).build(10, 100, -10),
-        );
-        self.renderClippedLine(
-            &simulation.player,
-            vec.Vec3(f32).build(10, 100, -10),
-            vec.Vec3(f32).build(-10, 100, -10),
-        );
-        self.renderClippedLine(
-            &simulation.player,
-            vec.Vec3(f32).build(-10, 100, -10),
-            vec.Vec3(f32).build(-10, 100, 10),
-        );
-        self.renderClippedLine(
-            &simulation.player,
-            vec.Vec3(f32).build(-10, 100, 10),
-            vec.Vec3(f32).build(10, 100, 10),
-        );
+        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(10, 50, 10), 0);
+        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(10, 50, -10), 0);
+        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(-10, 50, 10), 0);
+        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(-10, 50, -10), 0);
+        // self.renderClippedLine(
+        //     &simulation.player,
+        //     vec.Vec3(f32).build(10, 100, 10),
+        //     vec.Vec3(f32).build(10, 100, -10),
+        // );
+        // self.renderClippedLine(
+        //     &simulation.player,
+        //     vec.Vec3(f32).build(10, 100, -10),
+        //     vec.Vec3(f32).build(-10, 100, -10),
+        // );
+        // self.renderClippedLine(
+        //     &simulation.player,
+        //     vec.Vec3(f32).build(-10, 100, -10),
+        //     vec.Vec3(f32).build(-10, 100, 10),
+        // );
+        // self.renderClippedLine(
+        //     &simulation.player,
+        //     vec.Vec3(f32).build(-10, 100, 10),
+        //     vec.Vec3(f32).build(10, 100, 10),
+        // );
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -144,7 +148,7 @@ pub const Renderer = struct {
 
         return vec.Vec3(f32).build(
             screenspace.x * projection_coefficient / self.terminal_info.screen_aspect,
-            -screenspace.y * projection_coefficient / self.terminal_info.char_apsect,
+            screenspace.y * projection_coefficient / self.terminal_info.char_apsect,
             screenspace.z,
         );
     }
