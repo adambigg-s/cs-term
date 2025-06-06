@@ -113,6 +113,8 @@ pub const Player = struct {
 
         self.yaw += math.degreesToRadians(yaw_delta);
         self.pitch -= math.degreesToRadians(pitch_delta);
+
+        self.pitch = math.clamp(self.pitch, math.degreesToRadians(-80), math.degreesToRadians(80));
     }
 
     fn updateVectors(self: *Self) void {

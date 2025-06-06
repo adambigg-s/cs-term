@@ -49,58 +49,26 @@ pub const Renderer = struct {
         for (simulation.targets.items) |target| {
             self.renderDebugAmpersand(&simulation.player, target.pos, target.size);
         }
-    }
-
-    fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
-        return .{ @as(f32, @floatFromInt(self.width)) / 2, @as(f32, @floatFromInt(self.height)) / 2 };
-    }
-
-    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) vec.Vec3(f32) {
-        const local = point.sub(viewmodel.pos);
-        const screenspace = local.directionCosineVec(
-            viewmodel.right,
-            viewmodel.up,
-            viewmodel.front,
+        self.renderClippedLine(
+            &simulation.player,
+            vec.Vec3(f32).build(10, 100, 10),
+            vec.Vec3(f32).build(10, 100, -10),
         );
-
-        const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * screenspace.z);
-
-        return vec.Vec3(f32).build(
-            screenspace.x * projection_coefficient / self.terminal_info.screen_aspect,
-            -screenspace.y * projection_coefficient / self.terminal_info.char_apsect,
-            screenspace.z,
+        self.renderClippedLine(
+            &simulation.player,
+            vec.Vec3(f32).build(10, 100, -10),
+            vec.Vec3(f32).build(-10, 100, -10),
         );
-    }
-
-    fn isInView(viewmodel: *sim.Player, point: vec.Vec3(f32)) bool {
-        return point.x < 1 and point.x > -1 and point.y < 1 and point.y > -1 and point.z < viewmodel.far_plane and point.z > viewmodel.near_plane;
-    }
-
-    fn NDCToScreenSpace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(usize) {
-        const half_width, const half_height = self.halfDimensionsFloat();
-        const floatx, const floaty = .{
-            ndc.x * half_width + half_width,
-            ndc.y * half_height + half_height,
-        };
-        const xsigned: isize, const ysigned: isize = .{ @intFromFloat(floatx), @intFromFloat(floaty) };
-        const x: usize, const y: usize = .{ @bitCast(xsigned), @bitCast(ysigned) };
-
-        return vec.Vec2(usize).build(x, y);
-    }
-
-    fn renderClippedLine(self: *Self, viewmodel: *sim.Player, start: vec.Vec3(f32), end: vec.Vec3(f32)) void {
-        _ = .{ self, viewmodel, start, start, end }; // just to compile for now
-    }
-
-    fn renderDebugAmpersand(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
-        const ndc = self.worldToNDC(viewmodel, position);
-        if (!Self.isInView(viewmodel, ndc)) {
-            return;
-        }
-        const screen = self.NDCToScreenSpace(ndc);
-
-        _ = self.main.set(screen.x, screen.y, '&');
-        _ = size; // just to make it compile
+        self.renderClippedLine(
+            &simulation.player,
+            vec.Vec3(f32).build(-10, 100, -10),
+            vec.Vec3(f32).build(-10, 100, 10),
+        );
+        self.renderClippedLine(
+            &simulation.player,
+            vec.Vec3(f32).build(-10, 100, 10),
+            vec.Vec3(f32).build(10, 100, 10),
+        );
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -122,6 +90,88 @@ pub const Renderer = struct {
         try writer.writeAll("\x1b[0m");
 
         try buffer_writer.flush();
+    }
+
+    fn renderClippedLine(self: *Self, viewmodel: *sim.Player, start: vec.Vec3(f32), end: vec.Vec3(f32)) void {
+        const ndc_a = self.worldToNDC(viewmodel, start) orelse return;
+        const ndc_b = self.worldToNDC(viewmodel, end) orelse return;
+        if (!Self.isInView(viewmodel, ndc_a) and !Self.isInView(viewmodel, ndc_b)) {
+            return;
+        }
+        const a = self.NDCToScreenSpace(ndc_a);
+        const b = self.NDCToScreenSpace(ndc_b);
+
+        // const x0: isize, const y0: isize, const x1: isize, const y1: isize = .{
+        //     @as(isize, screen_a.x),
+        //     @as(isize, screen_a.y),
+        //     @as(isize, screen_b.x),
+        //     @as(isize, screen_b.y),
+        // };
+
+        var tracer = LineTracer.build(a.x, a.y, b.x, b.y);
+
+        while (tracer.next()) |point| {
+            const x: usize, const y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
+
+            _ = self.main.set(x, y, '.');
+        }
+
+        _ = .{ self, viewmodel, start, start, end }; // just to compile for now
+    }
+
+    fn renderDebugAmpersand(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
+        const ndc = self.worldToNDC(viewmodel, position) orelse return;
+        if (!Self.isInView(viewmodel, ndc)) {
+            return;
+        }
+        const screen = self.NDCToScreenSpace(ndc);
+
+        _ = self.main.set(@intCast(screen.x), @intCast(screen.y), '&');
+        _ = size; // just to make it compile
+    }
+
+    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
+        const local = point.sub(viewmodel.pos);
+        const screenspace = local.directionCosineVec(
+            viewmodel.right,
+            viewmodel.up,
+            viewmodel.front,
+        );
+
+        if (screenspace.z < viewmodel.near_plane) return null;
+
+        const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * screenspace.z);
+
+        return vec.Vec3(f32).build(
+            screenspace.x * projection_coefficient / self.terminal_info.screen_aspect,
+            -screenspace.y * projection_coefficient / self.terminal_info.char_apsect,
+            screenspace.z,
+        );
+    }
+
+    fn NDCToScreenSpace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(isize) {
+        const half_width, const half_height = self.halfDimensionsFloat();
+        const floatx, const floaty = .{
+            ndc.x * half_width + half_width,
+            ndc.y * half_height + half_height,
+        };
+        const xsigned: isize, const ysigned: isize = .{ @intFromFloat(floatx), @intFromFloat(floaty) };
+
+        return vec.Vec2(isize).build(xsigned, ysigned);
+    }
+
+    fn isInView(viewmodel: *sim.Player, point: vec.Vec3(f32)) bool {
+        const viewx, const viewy, const viewz = .{
+            point.x < 1 and point.x > -1,
+            point.y < 1 and point.y > -1,
+            point.z < viewmodel.far_plane and point.z > viewmodel.near_plane,
+        };
+
+        return viewx and viewy and viewz;
+    }
+
+    fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
+        return .{ @as(f32, @floatFromInt(self.width)) / 2, @as(f32, @floatFromInt(self.height)) / 2 };
     }
 };
 
@@ -207,10 +257,15 @@ pub const LineTracer = struct {
     const Self = @This();
 
     pub fn build(x0: isize, y0: isize, x1: isize, y1: isize) Self {
-        const dx = @abs(x1 - x0);
-        const dy = -@abs(y1 - y0);
-        const sx = if (x0 < x1) 1 else -1;
-        const sy = if (y0 < y1) 1 else -1;
+        var dx = x1 - x0;
+        var dy = y1 - y0;
+        dx = @intCast(@abs(dx));
+        dy = @intCast(@abs(dy));
+        dy = -dy;
+
+        const sx: isize = if (x0 < x1) 1 else -1;
+        const sy: isize = if (y0 < y1) 1 else -1;
+
         const err = dx + dy;
 
         return LineTracer{
