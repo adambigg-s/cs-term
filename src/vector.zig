@@ -8,36 +8,36 @@ pub fn Vec2(comptime T: type) type {
         const Self = @This();
 
         pub fn build(x: T, y: T) Self {
-            return Vec2(T){ .x = x, .y = y };
+            return Self{ .x = x, .y = y };
         }
 
         pub fn zeros() Self {
-            return Vec2(T).build(0, 0);
+            return Self.build(0, 0);
         }
 
         pub fn splat(value: T) Self {
-            return Vec2(T).build(value, value);
+            return Self.build(value, value);
         }
 
         pub fn neg(self: Self) Self {
-            return Vec2(T).build(-self.x, -self.y);
+            return Self.build(-self.x, -self.y);
         }
 
         pub fn add(self: Self, other: Self) Self {
-            return Vec2(T).build(self.x + other.x, self.y + other.y);
+            return Self.build(self.x + other.x, self.y + other.y);
         }
 
         pub fn sub(self: Self, other: Self) Self {
-            return Vec2(T).build(self.x - other.x, self.y - other.y);
+            return Self.build(self.x - other.x, self.y - other.y);
         }
 
         pub fn mul(self: Self, scalar: T) Self {
-            return Vec2(T).build(self.x * scalar, self.y * scalar);
+            return Self.build(self.x * scalar, self.y * scalar);
         }
 
         pub fn div(self: Self, scalar: T) Self {
             const inv = 1 / scalar;
-            return Vec2(T).build(self.x * inv, self.y * inv);
+            return Self.build(self.x * inv, self.y * inv);
         }
 
         pub fn inner_product(self: Self, other: Self) T {
@@ -61,7 +61,7 @@ pub fn Vec2(comptime T: type) type {
         }
 
         pub fn mulComponent(self: Self, other: Self) Self {
-            return Vec2(T).build(self.x * other.x, self.y * other.y);
+            return Self.build(self.x * other.x, self.y * other.y);
         }
     };
 }
@@ -75,36 +75,36 @@ pub fn Vec3(comptime T: type) type {
         const Self = @This();
 
         pub fn build(x: T, y: T, z: T) Self {
-            return Vec3(T){ .x = x, .y = y, .z = z };
+            return Self{ .x = x, .y = y, .z = z };
         }
 
         pub fn zeros() Self {
-            return Vec3(T).build(0, 0, 0);
+            return Self.build(0, 0, 0);
         }
 
         pub fn splat(value: T) Self {
-            return Vec3(T).build(value, value, value);
+            return Self.build(value, value, value);
         }
 
         pub fn neg(self: Self) Self {
-            return Vec3(T).build(-self.x, -self.y, -self.z);
+            return Self.build(-self.x, -self.y, -self.z);
         }
 
         pub fn add(self: Self, other: Self) Self {
-            return Vec3(T).build(self.x + other.x, self.y + other.y, self.z + other.z);
+            return Self.build(self.x + other.x, self.y + other.y, self.z + other.z);
         }
 
         pub fn sub(self: Self, other: Self) Self {
-            return Vec3(T).build(self.x - other.x, self.y - other.y, self.z - other.z);
+            return Self.build(self.x - other.x, self.y - other.y, self.z - other.z);
         }
 
         pub fn mul(self: Self, scalar: T) Self {
-            return Vec3(T).build(self.x * scalar, self.y * scalar, self.z * scalar);
+            return Self.build(self.x * scalar, self.y * scalar, self.z * scalar);
         }
 
         pub fn div(self: Self, scalar: T) Self {
             const inv = 1 / scalar;
-            return Vec3(T).build(self.x * inv, self.y * inv, self.z * inv);
+            return Self.build(self.x * inv, self.y * inv, self.z * inv);
         }
 
         pub fn inner_product(self: Self, other: Self) T {
@@ -112,7 +112,7 @@ pub fn Vec3(comptime T: type) type {
         }
 
         pub fn cross_product(self: Self, other: Self) Self {
-            return Vec3(T).build(
+            return Self.build(
                 self.y * other.z - self.z * other.y,
                 self.x * other.z - self.z * other.x,
                 self.x * other.y - self.y * other.x,
@@ -130,7 +130,7 @@ pub fn Vec3(comptime T: type) type {
         pub fn rotateX(self: Self, angle: T) Self {
             const sin, const cos = .{ math.sin(angle), math.cos(angle) };
 
-            return Vec3(T).build(
+            return Self.build(
                 self.x,
                 self.y * cos + self.z * -sin,
                 self.y * sin + self.z * cos,
@@ -140,7 +140,7 @@ pub fn Vec3(comptime T: type) type {
         pub fn rotateY(self: Self, angle: T) Self {
             const sin, const cos = .{ math.sin(angle), math.cos(angle) };
 
-            return Vec3(T).build(
+            return Self.build(
                 self.x * cos + self.z * sin,
                 self.y,
                 self.x * -sin + self.z * cos,
@@ -150,7 +150,7 @@ pub fn Vec3(comptime T: type) type {
         pub fn rotateZ(self: Self, angle: T) Self {
             const sin, const cos = .{ math.sin(angle), math.cos(angle) };
 
-            return Vec3(T).build(
+            return Self.build(
                 self.x * cos + self.y * -sin,
                 self.x * sin + self.y * cos,
                 self.z,
@@ -170,15 +170,15 @@ pub fn Vec3(comptime T: type) type {
         }
 
         pub fn mulComponent(self: Self, other: Self) Self {
-            return Vec3(T).build(self.x * other.x, self.y * other.y, self.z * other.z);
+            return Self.build(self.x * other.x, self.y * other.y, self.z * other.z);
         }
 
-        pub fn directionCosineVec(self: Self, xp: Self, yp: Self, zp: Self) struct { T, T, T } {
-            return .{
+        pub fn directionCosineVec(self: Self, xp: Self, yp: Self, zp: Self) Self {
+            return Self.build(
                 self.inner_product(xp),
                 self.inner_product(yp),
                 self.inner_product(zp),
-            };
+            );
         }
     };
 }

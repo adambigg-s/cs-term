@@ -51,21 +51,25 @@ pub const Renderer = struct {
 
     fn renderBillboardCircle(self: *Self, viewmodel: sim.Player, position: vec.Vec3(f32), size: f32) void {
         const tan_half_fov = math.tan(viewmodel.fov / 2);
-        const to_target = position.sub(viewmodel.pos);
-        const distance = to_target.length();
-        if (distance < Self.epsilon) return;
-        const dcx, const dcy, const dcz = to_target.directionCosineVec(
+        const relative_vector = position.sub(viewmodel.pos);
+        const screenspace = relative_vector.directionCosineVec(
             viewmodel.right,
             viewmodel.up,
             viewmodel.front,
         );
-        if (dcz < Self.epsilon) return;
-        const half_width, const half_height = self.halfDimensionsFloat();
-        const screenx = (dcx / (dcz * tan_half_fov)) * half_width + half_width;
-        const screeny = (-dcy / (dcz * tan_half_fov)) * half_height + half_height;
 
-        // just to see if it will compile before i log off
-        _, _ = .{ screenx, screeny };
+        if (screenspace.z < Self.epsilon) return;
+
+        const half_width, const half_height = self.halfDimensionsFloat();
+        const screenx = (screenspace.x / (screenspace.z * tan_half_fov)) * half_width + half_width;
+        const screeny = (-screenspace.y / (screenspace.z * tan_half_fov)) * half_height + half_height;
+
+        const bufferx: usize, const buffery: usize = .{
+            @intFromFloat(@abs(screenx)),
+            @intFromFloat(@abs(screeny)),
+        };
+
+        _ = self.main.set(bufferx, buffery, '@');
         _ = size;
     }
 
@@ -74,6 +78,7 @@ pub const Renderer = struct {
         var buffer_writer = std.io.bufferedWriter(stdout.writer());
         const writer = buffer_writer.writer();
         try writer.writeAll("\x1b[H");
+        try writer.writeAll("\x1b[48;2;70;70;70m");
         for (0..self.height) |y| {
             for (0..self.width) |x| {
                 const data = self.main.get(x, y).?;
@@ -84,6 +89,7 @@ pub const Renderer = struct {
 
             try writer.writeByte('\n');
         }
+        try writer.writeAll("\x1b[0m");
 
         try buffer_writer.flush();
     }
@@ -149,3 +155,19 @@ pub fn Buffer(comptime T: type) type {
         }
     };
 }
+
+pub const LineTracer = struct {
+    x0: isize,
+    y0: isize,
+    x1: isize,
+    y1: isize,
+    dx: isize,
+    dy: isize,
+    err: isize,
+
+    const Self = @This();
+
+    pub fn build() Self {
+        LineTracer{};
+    }
+};
