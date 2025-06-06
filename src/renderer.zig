@@ -47,7 +47,7 @@ pub const Renderer = struct {
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
         for (simulation.targets.items) |target| {
-            self.renderBillboardCircle(&simulation.player, target.pos, target.size);
+            self.renderDebugAmpersand(&simulation.player, target.pos, target.size);
         }
     }
 
@@ -88,7 +88,11 @@ pub const Renderer = struct {
         return vec.Vec2(usize).build(x, y);
     }
 
-    fn renderBillboardCircle(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
+    fn renderClippedLine(self: *Self, viewmodel: *sim.Player, start: vec.Vec3(f32), end: vec.Vec3(f32)) void {
+        _ = .{ self, viewmodel, start, start, end }; // just to compile for now
+    }
+
+    fn renderDebugAmpersand(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
         const ndc = self.worldToNDC(viewmodel, position);
         if (!Self.isInView(viewmodel, ndc)) {
             return;
@@ -187,6 +191,7 @@ pub fn Buffer(comptime T: type) type {
     };
 }
 
+// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 pub const LineTracer = struct {
     x0: isize,
     y0: isize,
@@ -194,6 +199,8 @@ pub const LineTracer = struct {
     y1: isize,
     dx: isize,
     dy: isize,
+    sx: isize,
+    sy: isize,
     err: isize,
     done: bool,
 
@@ -201,7 +208,7 @@ pub const LineTracer = struct {
 
     pub fn build(x0: isize, y0: isize, x1: isize, y1: isize) Self {
         const dx = @abs(x1 - x0);
-        const dy = @abs(y1 - y0);
+        const dy = -@abs(y1 - y0);
         const sx = if (x0 < x1) 1 else -1;
         const sy = if (y0 < y1) 1 else -1;
         const err = dx + dy;
@@ -221,7 +228,25 @@ pub const LineTracer = struct {
     }
 
     pub fn next(self: *Self) ?vec.Vec2(isize) {
-        _ = self;
-        return null;
+        if (self.done) return null;
+        const point = vec.Vec2(isize).build(self.x0, self.y0);
+
+        const err2 = 2 * self.err;
+        if (err2 >= self.dy) {
+            if (self.x1 == self.x0) {
+                self.done = true;
+            }
+            self.err += self.dy;
+            self.x0 += self.sx;
+        }
+        if (err2 <= self.dx) {
+            if (self.y1 == self.y0) {
+                self.done = true;
+            }
+            self.err += self.dx;
+            self.y0 += self.sy;
+        }
+
+        return point;
     }
 };
