@@ -164,10 +164,33 @@ pub const LineTracer = struct {
     dx: isize,
     dy: isize,
     err: isize,
+    done: bool,
 
     const Self = @This();
 
-    pub fn build() Self {
-        LineTracer{};
+    pub fn build(x0: isize, y0: isize, x1: isize, y1: isize) Self {
+        const dx = @abs(x1 - x0);
+        const dy = @abs(y1 - y0);
+        const sx = if (x0 < x1) 1 else -1;
+        const sy = if (y0 < y1) 1 else -1;
+        const err = dx + dy;
+
+        return LineTracer{
+            .x0 = x0,
+            .y0 = y0,
+            .x1 = x1,
+            .y1 = y1,
+            .dx = dx,
+            .dy = dy,
+            .sx = sx,
+            .sy = sy,
+            .err = err,
+            .done = false,
+        };
+    }
+
+    pub fn next(self: *Self) ?vec.Vec2(isize) {
+        _ = self;
+        return null;
     }
 };
