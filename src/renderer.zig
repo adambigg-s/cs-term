@@ -5,24 +5,25 @@ const vec = lib.vec;
 const win = lib.win;
 
 pub const Renderer = struct {
-    main: lib.Buffer(u32),
-    depth: lib.Buffer(f32),
+    main: Buffer(u32),
+    depth: Buffer(f32),
     width: usize,
     height: usize,
 
     const Self = @This();
+    const Alloc = std.mem.Allocator;
 
     const infinity = 1e9;
     const epsilon = 1e-9;
 
     const math = std.math;
 
-    pub fn init(allocator: std.mem.Allocator) !Self {
+    pub fn init(allocator: Alloc) !Self {
         const width, const height = try win.getTerminalDimensions();
 
         return Renderer{
-            .main = try lib.Buffer(u32).init(width, height, allocator, ' '),
-            .depth = try lib.Buffer(f32).init(width, height, allocator, Self.infinity),
+            .main = try Buffer(u32).init(width, height, allocator, ' '),
+            .depth = try Buffer(f32).init(width, height, allocator, Self.infinity),
             .width = width,
             .height = height,
         };
@@ -76,10 +77,8 @@ pub const Renderer = struct {
         for (0..self.height) |y| {
             for (0..self.width) |x| {
                 const data = self.main.get(x, y).?;
-
                 var char_buffer: [4]u8 = undefined;
                 const len = try std.unicode.utf8Encode(@intCast(data), &char_buffer);
-
                 try writer.writeAll(char_buffer[0..len]);
             }
 
@@ -89,3 +88,64 @@ pub const Renderer = struct {
         try buffer_writer.flush();
     }
 };
+
+pub fn Buffer(comptime T: type) type {
+    return struct {
+        width: usize,
+        height: usize,
+        data: std.ArrayList(T),
+        clear_value: T,
+        allocator: std.mem.Allocator,
+
+        const Self = @This();
+        const Alloc = std.mem.Allocator;
+
+        pub fn init(width: usize, height: usize, allocator: Alloc, clear_value: T) !Self {
+            var data = try std.ArrayList(T).initCapacity(allocator, width * height);
+            data.expandToCapacity();
+            var output = Buffer(T){
+                .width = width,
+                .height = height,
+                .data = data,
+                .clear_value = clear_value,
+                .allocator = allocator,
+            };
+            output.clear();
+
+            return output;
+        }
+
+        pub fn deinit(self: *Self) void {
+            self.data.deinit();
+        }
+
+        pub fn clear(self: *Self) void {
+            @memset(self.data.items, self.clear_value);
+        }
+
+        pub fn get(self: *Self, x: usize, y: usize) ?T {
+            if (!self.inbounds(x, y)) {
+                return null;
+            }
+
+            return self.data.items[self.index(x, y)];
+        }
+
+        pub fn set(self: *Self, x: usize, y: usize, data: T) bool {
+            if (!self.inbounds(x, y)) {
+                return false;
+            }
+
+            self.data.items[self.index(x, y)] = data;
+            return true;
+        }
+
+        fn index(self: *Self, x: usize, y: usize) usize {
+            return self.width * y + x;
+        }
+
+        fn inbounds(self: *Self, x: usize, y: usize) bool {
+            return x < self.width and y < self.height;
+        }
+    };
+}

@@ -53,18 +53,13 @@ pub fn setCursorPos(x: usize, y: usize) !void {
     }
 }
 
-pub fn getSTDHandle() !WinHandle {
-    const response = GetStdHandle(win_std_handle);
-    if (response == null) {
-        return WinError.NullResponse;
-    }
-
-    return response;
+pub fn getSTDHandle() WinHandle {
+    return GetStdHandle(win_std_handle);
 }
 
 pub fn getConsoleScreenBufferInfo() !WinConsoleInfo {
-    const handle = try getSTDHandle();
-    var info: WinConsoleFontInfo = undefined;
+    const handle = getSTDHandle();
+    var info: WinConsoleInfo = undefined;
     const response = GetConsoleScreenBufferInfo(handle, &info);
     if (response == win_false) {
         return WinError.NullResponse;

@@ -20,8 +20,8 @@ pub const Application = struct {
     pub fn run(self: *Self) !void {
         while (!self.inputs.key_escape) {
             try self.inputs.updateDeltas();
-            try self.inputs.updateKeys();
-            try self.inputs.updatePos(1920, 1080);
+            self.inputs.updateKeys();
+            self.inputs.updatePos(1920, 1080);
             try win.setCursorPos(1920, 1080);
 
             try self.simulation.update(&self.inputs);
@@ -31,7 +31,12 @@ pub const Application = struct {
             try self.renderer.commitPass();
 
             // debugging stuff
-            {}
+            {
+                const info = win.getConsoleScreenBufferInfo() catch null;
+                std.debug.print("\x1b[10Hinfo: {any}\n", .{info});
+                std.debug.print("buffer size: {}, {}\n", .{ self.renderer.width, self.renderer.height });
+                std.debug.print("inputs struct: {any}", .{self.inputs});
+            }
         }
     }
 };
