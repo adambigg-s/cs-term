@@ -9,6 +9,7 @@ pub const Renderer = struct {
     depth: Buffer(f32),
     width: usize,
     height: usize,
+    terminal_info: TerminalInfo,
 
     const Self = @This();
     const Alloc = std.mem.Allocator;
@@ -20,12 +21,17 @@ pub const Renderer = struct {
 
     pub fn init(allocator: Alloc) !Self {
         const width, const height = try win.getTerminalDimensions();
+        var terminal_info: TerminalInfo = undefined;
+        terminal_info.char_apsect = 2; // height x width of the terminal character
+        terminal_info.screen_aspect = 1; // width x height of the terminal screen
 
         return Renderer{
             .main = try Buffer(u32).init(width, height, allocator, ' '),
             .depth = try Buffer(f32).init(width, height, allocator, Self.infinity),
             .width = width,
             .height = height,
+            // need to query this later for proper scale rendering
+            .terminal_info = terminal_info,
         };
     }
 
@@ -41,7 +47,7 @@ pub const Renderer = struct {
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
         for (simulation.targets.items) |target| {
-            self.renderBillboardCircle(simulation.player, target.pos, target.size);
+            self.renderBillboardCircle(&simulation.player, target.pos, target.size);
         }
     }
 
@@ -49,28 +55,48 @@ pub const Renderer = struct {
         return .{ @as(f32, @floatFromInt(self.width)) / 2, @as(f32, @floatFromInt(self.height)) / 2 };
     }
 
-    fn renderBillboardCircle(self: *Self, viewmodel: sim.Player, position: vec.Vec3(f32), size: f32) void {
-        const tan_half_fov = math.tan(viewmodel.fov / 2);
-        const relative_vector = position.sub(viewmodel.pos);
-        const screenspace = relative_vector.directionCosineVec(
+    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) vec.Vec3(f32) {
+        const local = point.sub(viewmodel.pos);
+        const screenspace = local.directionCosineVec(
             viewmodel.right,
             viewmodel.up,
             viewmodel.front,
         );
 
-        if (screenspace.z < Self.epsilon) return;
+        const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * screenspace.z);
 
+        return vec.Vec3(f32).build(
+            screenspace.x * projection_coefficient / self.terminal_info.screen_aspect,
+            -screenspace.y * projection_coefficient / self.terminal_info.char_apsect,
+            screenspace.z,
+        );
+    }
+
+    fn isInView(viewmodel: *sim.Player, point: vec.Vec3(f32)) bool {
+        return point.x < 1 and point.x > -1 and point.y < 1 and point.y > -1 and point.z < viewmodel.far_plane and point.z > viewmodel.near_plane;
+    }
+
+    fn NDCToScreenSpace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(usize) {
         const half_width, const half_height = self.halfDimensionsFloat();
-        const screenx = (screenspace.x / (screenspace.z * tan_half_fov)) * half_width + half_width;
-        const screeny = (-screenspace.y / (screenspace.z * tan_half_fov)) * half_height + half_height;
-
-        const bufferx: usize, const buffery: usize = .{
-            @intFromFloat(@abs(screenx)),
-            @intFromFloat(@abs(screeny)),
+        const floatx, const floaty = .{
+            ndc.x * half_width + half_width,
+            ndc.y * half_height + half_height,
         };
+        const xsigned: isize, const ysigned: isize = .{ @intFromFloat(floatx), @intFromFloat(floaty) };
+        const x: usize, const y: usize = .{ @bitCast(xsigned), @bitCast(ysigned) };
 
-        _ = self.main.set(bufferx, buffery, '@');
-        _ = size;
+        return vec.Vec2(usize).build(x, y);
+    }
+
+    fn renderBillboardCircle(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
+        const ndc = self.worldToNDC(viewmodel, position);
+        if (!Self.isInView(viewmodel, ndc)) {
+            return;
+        }
+        const screen = self.NDCToScreenSpace(ndc);
+
+        _ = self.main.set(screen.x, screen.y, '&');
+        _ = size; // just to make it compile
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -93,6 +119,11 @@ pub const Renderer = struct {
 
         try buffer_writer.flush();
     }
+};
+
+pub const TerminalInfo = struct {
+    screen_aspect: f32,
+    char_apsect: f32,
 };
 
 pub fn Buffer(comptime T: type) type {

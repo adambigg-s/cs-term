@@ -49,11 +49,13 @@ pub const Player = struct {
     world_up: vec.Vec3(f32),
     pitch: f32,
     yaw: f32,
-    fov: f32,
+    vertical_fov: f32,
     look_sensitivity: f32,
     yaw_modifier: f32,
     pitch_modifier: f32,
     move_speed: f32,
+    near_plane: f32,
+    far_plane: f32,
 
     const Self = @This();
 
@@ -68,11 +70,13 @@ pub const Player = struct {
             .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
-            .fov = math.degreesToRadians(90),
+            .vertical_fov = math.degreesToRadians(55),
             .look_sensitivity = 2.5,
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,
             .move_speed = 0.03,
+            .near_plane = 0.1,
+            .far_plane = 1000,
         };
     }
 
