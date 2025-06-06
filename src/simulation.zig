@@ -38,6 +38,11 @@ pub const Simulation = struct {
             };
             self.targets.items[index] = target;
         }
+        // ensure there is one target direclty where you spawn for debugging
+        self.targets.append(Target{
+            .pos = vec.Vec3(f32).build(0, 0, 0),
+            .size = 0,
+        }) catch return;
     }
 };
 
@@ -63,14 +68,14 @@ pub const Player = struct {
 
     pub fn new() Self {
         return Player{
-            .pos = vec.Vec3(f32).zeros(),
+            .pos = vec.Vec3(f32).build(0, 0, -10),
             .front = vec.Vec3(f32).zeros(),
             .right = vec.Vec3(f32).zeros(),
             .up = vec.Vec3(f32).zeros(),
-            .world_up = vec.Vec3(f32).build(0, 1, 0),
+            .world_up = vec.Vec3(f32).build(0, -1, 0),
             .pitch = 0,
             .yaw = 0,
-            .vertical_fov = math.degreesToRadians(55),
+            .vertical_fov = math.degreesToRadians(70),
             .look_sensitivity = 2.5,
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,
@@ -111,9 +116,8 @@ pub const Player = struct {
             mouse_dy * self.look_sensitivity * self.pitch_modifier,
         };
 
-        self.yaw += math.degreesToRadians(yaw_delta);
-        self.pitch -= math.degreesToRadians(pitch_delta);
-
+        self.yaw -= math.degreesToRadians(yaw_delta);
+        self.pitch += math.degreesToRadians(pitch_delta);
         self.pitch = math.clamp(self.pitch, math.degreesToRadians(-80), math.degreesToRadians(80));
     }
 
