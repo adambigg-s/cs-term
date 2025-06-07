@@ -130,6 +130,8 @@ pub const vk_w = 0x57;
 pub const vk_a = 0x41;
 pub const vk_s = 0x53;
 pub const vk_d = 0x44;
+pub const vk_r = 0x52;
+pub const vk_f = 0x46;
 
 // https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 const WinBool = i32;

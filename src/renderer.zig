@@ -23,7 +23,7 @@ pub const Renderer = struct {
         const width, const height = try win.getTerminalDimensions();
         var terminal_info: TerminalInfo = undefined;
         terminal_info.char_apsect = 2; // height x width of the terminal character
-        terminal_info.screen_aspect = 1; // width x height of the terminal screen
+        terminal_info.screen_aspect = 1920 / 1080; // width x height of the terminal screen
 
         return Renderer{
             .main = try Buffer(u32).init(width, height, allocator, ' '),
@@ -53,26 +53,6 @@ pub const Renderer = struct {
         self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(10, 50, -10), 0);
         self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(-10, 50, 10), 0);
         self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(-10, 50, -10), 0);
-        // self.renderClippedLine(
-        //     &simulation.player,
-        //     vec.Vec3(f32).build(10, 100, 10),
-        //     vec.Vec3(f32).build(10, 100, -10),
-        // );
-        // self.renderClippedLine(
-        //     &simulation.player,
-        //     vec.Vec3(f32).build(10, 100, -10),
-        //     vec.Vec3(f32).build(-10, 100, -10),
-        // );
-        // self.renderClippedLine(
-        //     &simulation.player,
-        //     vec.Vec3(f32).build(-10, 100, -10),
-        //     vec.Vec3(f32).build(-10, 100, 10),
-        // );
-        // self.renderClippedLine(
-        //     &simulation.player,
-        //     vec.Vec3(f32).build(-10, 100, 10),
-        //     vec.Vec3(f32).build(10, 100, 10),
-        // );
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -96,33 +76,6 @@ pub const Renderer = struct {
         try buffer_writer.flush();
     }
 
-    fn renderClippedLine(self: *Self, viewmodel: *sim.Player, start: vec.Vec3(f32), end: vec.Vec3(f32)) void {
-        const ndc_a = self.worldToNDC(viewmodel, start) orelse return;
-        const ndc_b = self.worldToNDC(viewmodel, end) orelse return;
-        if (!Self.isInView(viewmodel, ndc_a) and !Self.isInView(viewmodel, ndc_b)) {
-            return;
-        }
-        const a = self.NDCToScreenSpace(ndc_a);
-        const b = self.NDCToScreenSpace(ndc_b);
-
-        // const x0: isize, const y0: isize, const x1: isize, const y1: isize = .{
-        //     @as(isize, screen_a.x),
-        //     @as(isize, screen_a.y),
-        //     @as(isize, screen_b.x),
-        //     @as(isize, screen_b.y),
-        // };
-
-        var tracer = LineTracer.build(a.x, a.y, b.x, b.y);
-
-        while (tracer.next()) |point| {
-            const x: usize, const y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
-
-            _ = self.main.set(x, y, '.');
-        }
-
-        _ = .{ self, viewmodel, start, start, end }; // just to compile for now
-    }
-
     fn renderDebugAmpersand(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
         const ndc = self.worldToNDC(viewmodel, position) orelse return;
         if (!Self.isInView(viewmodel, ndc)) {
@@ -138,7 +91,7 @@ pub const Renderer = struct {
         const local = point.sub(viewmodel.pos);
         const screenspace = local.directionCosineVec(
             viewmodel.right,
-            viewmodel.up,
+            viewmodel.up.neg(),
             viewmodel.front,
         );
 

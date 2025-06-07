@@ -17,7 +17,7 @@ pub const Simulation = struct {
             .player = Player.new(),
         };
         simulation.targets.expandToCapacity();
-        simulation.randomTargets();
+        simulation.addTarget();
 
         return simulation;
     }
@@ -30,14 +30,7 @@ pub const Simulation = struct {
         self.player.update(inputs);
     }
 
-    fn randomTargets(self: *Self) void {
-        for (0..self.target_count) |index| {
-            const target = Target{
-                .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(5, 0, 5)),
-                .size = 5,
-            };
-            self.targets.items[index] = target;
-        }
+    fn addTarget(self: *Self) void {
         // ensure there is one target direclty where you spawn for debugging
         self.targets.append(Target{
             .pos = vec.Vec3(f32).build(0, 0, 0),
@@ -68,18 +61,18 @@ pub const Player = struct {
 
     pub fn new() Self {
         return Player{
-            .pos = vec.Vec3(f32).build(0, 0, -10),
+            .pos = vec.Vec3(f32).build(0, 0, 0),
             .front = vec.Vec3(f32).zeros(),
             .right = vec.Vec3(f32).zeros(),
             .up = vec.Vec3(f32).zeros(),
-            .world_up = vec.Vec3(f32).build(0, 1, 0),
+            .world_up = vec.Vec3(f32).build(0, -1, 0),
             .pitch = 0,
             .yaw = 0,
-            .vertical_fov = math.degreesToRadians(45),
+            .vertical_fov = math.degreesToRadians(50),
             .look_sensitivity = 2.5,
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,
-            .move_speed = 0.03,
+            .move_speed = 0.1,
             .near_plane = 0.1,
             .far_plane = 1000,
         };
@@ -93,20 +86,22 @@ pub const Player = struct {
 
     fn updateTranslation(self: *Self, inputs: *Inputs) void {
         if (inputs.key_w) {
-            // self.pos = self.pos.add(self.front.mul(self.move_speed));
             self.pos = self.pos.add(self.front.mul(self.move_speed));
         }
         if (inputs.key_s) {
-            // self.pos = self.pos.sub(self.front.mul(self.move_speed));
             self.pos = self.pos.sub(self.front.mul(self.move_speed));
         }
         if (inputs.key_a) {
-            // self.pos = self.pos.sub(self.right.mul(self.move_speed));
             self.pos = self.pos.sub(self.right.mul(self.move_speed));
         }
         if (inputs.key_d) {
-            // self.pos = self.pos.add(self.right.mul(self.move_speed));
             self.pos = self.pos.add(self.right.mul(self.move_speed));
+        }
+        if (inputs.key_r) {
+            self.pos = self.pos.add(self.up.mul(self.move_speed));
+        }
+        if (inputs.key_f) {
+            self.pos = self.pos.sub(self.up.mul(self.move_speed));
         }
     }
 
@@ -150,6 +145,8 @@ pub const Inputs = struct {
     key_a: bool = false,
     key_s: bool = false,
     key_d: bool = false,
+    key_r: bool = false,
+    key_f: bool = false,
     key_escape: bool = false,
     mouse_click: bool = false,
     mouse_delta: vec.Vec2(i32),
@@ -163,12 +160,15 @@ pub const Inputs = struct {
         _ = win.getKeyState(win.vk_a);
         _ = win.getKeyState(win.vk_s);
         _ = win.getKeyState(win.vk_d);
+        _ = win.getKeyState(win.vk_r);
+        _ = win.getKeyState(win.vk_f);
         _ = win.getKeyState(win.vk_escape);
         _ = win.getKeyState(win.vk_mouse_lbutton);
+        _ = win.setCursorPos(1920, 1080) catch unreachable;
 
         return Inputs{
             .mouse_delta = vec.Vec2(i32).zeros(),
-            .mouse_pos = vec.Vec2(i32).zeros(),
+            .mouse_pos = vec.Vec2(i32).build(1920, 1080),
         };
     }
 
@@ -177,6 +177,8 @@ pub const Inputs = struct {
         self.key_a = win.getKeyState(win.vk_a);
         self.key_s = win.getKeyState(win.vk_s);
         self.key_d = win.getKeyState(win.vk_d);
+        self.key_r = win.getKeyState(win.vk_r);
+        self.key_f = win.getKeyState(win.vk_f);
         self.key_escape = win.getKeyState(win.vk_escape);
         self.mouse_click = win.getKeyState(win.vk_mouse_lbutton);
     }
