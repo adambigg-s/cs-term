@@ -88,21 +88,22 @@ pub const Renderer = struct {
 
     fn worldToNDC(_: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
         const local = point.sub(viewmodel.pos);
-        const screenspace = vec.Vec3(f32).build(
-            local.inner_product(viewmodel.right),
-            local.inner_product(viewmodel.up.neg()),
+        const viewspace = vec.Vec3(f32).build(
             local.inner_product(viewmodel.front),
+            local.inner_product(viewmodel.up),
+            local.inner_product(viewmodel.right),
         );
 
-        if (screenspace.z < viewmodel.near_plane) return null;
+        const depth = viewspace.x;
+        if (depth < viewmodel.near_plane) return null;
 
         const half_fov_tan = math.tan(viewmodel.vertical_fov / 2);
-        const projection_coefficient = 1 / (half_fov_tan * screenspace.z);
+        const projection_coefficient = 1 / (half_fov_tan * viewspace.z);
 
         return vec.Vec3(f32).build(
-            screenspace.x * projection_coefficient,
-            screenspace.y * projection_coefficient,
-            screenspace.z,
+            viewspace.z * projection_coefficient,
+            viewspace.y * projection_coefficient,
+            depth,
         );
     }
 
@@ -111,7 +112,7 @@ pub const Renderer = struct {
 
         const floatx, const floaty = .{
             ndc.x * half_width + half_width,
-            ndc.y * half_height + half_height,
+            -ndc.y * half_height + half_height,
         };
         const xsigned: isize, const ysigned: isize = .{ @intFromFloat(floatx), @intFromFloat(floaty) };
 

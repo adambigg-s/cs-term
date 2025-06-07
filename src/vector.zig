@@ -114,7 +114,7 @@ pub fn Vec3(comptime T: type) type {
         pub fn cross_product(self: Self, other: Self) Self {
             return Self.build(
                 self.y * other.z - self.z * other.y,
-                self.x * other.z - self.z * other.x,
+                -(self.x * other.z - self.z * other.x),
                 self.x * other.y - self.y * other.x,
             );
         }
