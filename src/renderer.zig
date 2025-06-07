@@ -97,7 +97,9 @@ pub const Renderer = struct {
         for (0..self.height) |y| {
             for (0..self.width) |x| {
                 const data = self.main.get(x, y).?;
-                var char_buffer: [4]u8 = undefined;
+                var char_buffer: [3]u8 = undefined;
+                // this is a really weird conversion but it shouldn't ever panic
+                // 3 * 8 > 21 so it should always be a big enough buffer
                 const len = try std.unicode.utf8Encode(@intCast(data), &char_buffer);
                 try writer.writeAll(char_buffer[0..len]);
             }
@@ -143,6 +145,12 @@ pub const Renderer = struct {
             self.NDCToScreenspace(ndc_b),
         };
 
+        const to_inbounds, const from_inbounds = .{
+            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
+            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
+        };
+        if (!to_inbounds and !from_inbounds) return;
+
         var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
 
         while (tracer.next()) |point| {
@@ -181,9 +189,6 @@ pub const Renderer = struct {
         const viewspace = self.worldToViewspace(viewmodel, point);
 
         if (viewspace.x < viewmodel.near_plane) {
-            std.debug.print("depth: {}\n\n", .{viewspace.x});
-            std.debug.print("point pos: {}\n\n", .{point});
-            std.debug.print("our pos: {}\n\n", .{viewmodel.pos});
             return null;
         }
 

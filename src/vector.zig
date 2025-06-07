@@ -182,3 +182,67 @@ pub fn Vec3(comptime T: type) type {
         }
     };
 }
+
+pub fn Vec4(comptime T: type) type {
+    return struct {
+        x: T = 0,
+        y: T = 0,
+        z: T = 0,
+        w: T = 0,
+
+        const Self = @This();
+
+        pub fn build(x: T, y: T, z: T, w: T) Self {
+            return Self{ .x = x, .y = y, .z = z, .w = w };
+        }
+
+        pub fn zeros() Self {
+            return Self.build(0, 0, 0, 0);
+        }
+
+        pub fn splat(value: T) Self {
+            return Self.build(value, value, value, value);
+        }
+
+        pub fn neg(self: Self) Self {
+            return Self.build(-self.x, -self.y, -self.y, -self.w);
+        }
+
+        pub fn add(self: Self, other: Self) Self {
+            return Self.build(self.x + other.x, self.y + other.y, self.z + other.z, self.w + other.w);
+        }
+
+        pub fn sub(self: Self, other: Self) Self {
+            return Self.build(self.x - other.x, self.y - other.y, self.z - other.z, self.w - other.w);
+        }
+
+        pub fn mul(self: Self, scalar: T) Self {
+            return Self.build(self.x * scalar, self.y * scalar, self.z * scalar, self.w * scalar);
+        }
+
+        pub fn div(self: Self, scalar: T) Self {
+            const inv = 1 / scalar;
+            return Self.build(self.x * inv, self.y * inv, self.z * inv, self.w * inv);
+        }
+
+        pub fn inner_product(self: Self, other: Self) T {
+            return self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
+        }
+
+        pub fn length_sq(self: Self) T {
+            return self.inner_product(self);
+        }
+
+        pub fn length(self: Self) T {
+            return math.sqrt(self.length_sq());
+        }
+
+        pub fn normalize(self: Self) Self {
+            return self.div(self.length());
+        }
+
+        pub fn mulComponent(self: Self, other: Self) Self {
+            return Self.build(self.x * other.x, self.y * other.y, self.z * other.z, self.w * other.w);
+        }
+    };
+}
