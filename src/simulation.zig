@@ -62,10 +62,10 @@ pub const Player = struct {
     pub fn new() Self {
         return Player{
             .pos = vec.Vec3(f32).build(0, 0, 0),
-            .front = vec.Vec3(f32).zeros(),
+            .front = vec.Vec3(f32).build(1, 0, 0),
             .right = vec.Vec3(f32).zeros(),
             .up = vec.Vec3(f32).zeros(),
-            .world_up = vec.Vec3(f32).build(0, -1, 0),
+            .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
             .vertical_fov = math.degreesToRadians(50),
@@ -115,9 +115,9 @@ pub const Player = struct {
             mouse_dy * self.look_sensitivity * self.pitch_modifier,
         };
 
-        self.yaw -= math.degreesToRadians(yaw_delta);
-        self.pitch -= math.degreesToRadians(pitch_delta);
-        self.pitch = math.clamp(self.pitch, math.degreesToRadians(-80), math.degreesToRadians(80));
+        self.yaw += math.degreesToRadians(yaw_delta);
+        self.pitch += math.degreesToRadians(pitch_delta);
+        self.pitch = math.clamp(self.pitch, math.degreesToRadians(-85), math.degreesToRadians(85));
     }
 
     fn updateVectors(self: *Self) void {
@@ -126,11 +126,12 @@ pub const Player = struct {
             math.sin(self.pitch),
             math.sin(self.yaw) * math.cos(self.pitch),
         );
-        self.right = self.world_up.cross_product(self.front);
-        self.up = self.front.cross_product(self.right);
-
         self.front = self.front.normalize();
+
+        self.right = self.front.cross_product(self.world_up);
         self.right = self.right.normalize();
+
+        self.up = self.front.cross_product(self.right);
         self.up = self.up.normalize();
     }
 };

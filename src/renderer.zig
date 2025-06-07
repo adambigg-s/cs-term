@@ -47,12 +47,12 @@ pub const Renderer = struct {
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
         for (simulation.targets.items) |target| {
-            self.renderDebugAmpersand(&simulation.player, target.pos, target.size);
+            self.renderDebugCharacter(&simulation.player, target.pos, 'X');
         }
-        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(10, 50, 10), 0);
-        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(10, 50, -10), 0);
-        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(-10, 50, 10), 0);
-        self.renderDebugAmpersand(&simulation.player, vec.Vec3(f32).build(-10, 50, -10), 0);
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 50, 10), 'a');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 50, -10), 'b');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, 50, 10), 'c');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, 50, -10), 'd');
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -76,38 +76,39 @@ pub const Renderer = struct {
         try buffer_writer.flush();
     }
 
-    fn renderDebugAmpersand(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), size: f32) void {
+    fn renderDebugCharacter(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), char: u8) void {
         const ndc = self.worldToNDC(viewmodel, position) orelse return;
         if (!Self.isInView(viewmodel, ndc)) {
             return;
         }
         const screen = self.NDCToScreenSpace(ndc);
 
-        _ = self.main.set(@intCast(screen.x), @intCast(screen.y), '&');
-        _ = size; // just to make it compile
+        _ = self.main.set(@intCast(screen.x), @intCast(screen.y), char);
     }
 
-    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
+    fn worldToNDC(_: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
         const local = point.sub(viewmodel.pos);
-        const screenspace = local.directionCosineVec(
-            viewmodel.right,
-            viewmodel.up.neg(),
-            viewmodel.front,
+        const screenspace = vec.Vec3(f32).build(
+            local.inner_product(viewmodel.right),
+            local.inner_product(viewmodel.up.neg()),
+            local.inner_product(viewmodel.front),
         );
 
         if (screenspace.z < viewmodel.near_plane) return null;
 
-        const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * screenspace.z);
+        const half_fov_tan = math.tan(viewmodel.vertical_fov / 2);
+        const projection_coefficient = 1 / (half_fov_tan * screenspace.z);
 
         return vec.Vec3(f32).build(
-            screenspace.x * projection_coefficient / self.terminal_info.screen_aspect,
-            screenspace.y * projection_coefficient / self.terminal_info.char_apsect,
+            screenspace.x * projection_coefficient,
+            screenspace.y * projection_coefficient,
             screenspace.z,
         );
     }
 
     fn NDCToScreenSpace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(isize) {
         const half_width, const half_height = self.halfDimensionsFloat();
+
         const floatx, const floaty = .{
             ndc.x * half_width + half_width,
             ndc.y * half_height + half_height,
@@ -123,7 +124,6 @@ pub const Renderer = struct {
             point.y < 1 and point.y > -1,
             point.z < viewmodel.far_plane and point.z > viewmodel.near_plane,
         };
-
         return viewx and viewy and viewz;
     }
 
