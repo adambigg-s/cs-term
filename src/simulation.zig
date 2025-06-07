@@ -16,7 +16,6 @@ pub const Simulation = struct {
             .target_count = target_count,
             .player = Player.new(),
         };
-        simulation.targets.expandToCapacity();
         simulation.addTarget();
 
         return simulation;
@@ -33,7 +32,7 @@ pub const Simulation = struct {
     fn addTarget(self: *Self) void {
         // ensure there is one target direclty where you spawn for debugging
         self.targets.append(Target{
-            .pos = vec.Vec3(f32).build(0, 0, 0),
+            .pos = vec.Vec3(f32).build(30, 0, 0),
             .size = 0,
         }) catch return;
     }
@@ -68,7 +67,7 @@ pub const Player = struct {
             .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
-            .vertical_fov = math.degreesToRadians(50),
+            .vertical_fov = math.degreesToRadians(30),
             .look_sensitivity = 2.5,
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,

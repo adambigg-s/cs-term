@@ -22,8 +22,8 @@ pub const Renderer = struct {
     pub fn init(allocator: Alloc) !Self {
         const width, const height = try win.getTerminalDimensions();
         var terminal_info: TerminalInfo = undefined;
-        terminal_info.char_apsect = 2; // height x width of the terminal character
-        terminal_info.screen_aspect = 1920 / 1080; // width x height of the terminal screen
+        terminal_info.char_apsect = 1.5; // height x width of the terminal character
+        terminal_info.screen_aspect = 2560.0 / 1080.0; // width x height of the terminal screen
 
         return Renderer{
             .main = try Buffer(u32).init(width, height, allocator, ' '),
@@ -49,10 +49,14 @@ pub const Renderer = struct {
         for (simulation.targets.items) |target| {
             self.renderDebugCharacter(&simulation.player, target.pos, 'X');
         }
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 50, 10), 'a');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 50, -10), 'b');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, 50, 10), 'c');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, 50, -10), 'd');
+        // other debug stuff right in front
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 0, 1.5), 'a');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 1.5, 0), 'b');
+        // large square on the ground
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, -50, 10), 'a');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, -50, -10), 'b');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, 10), 'c');
+        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, -10), 'd');
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -86,24 +90,34 @@ pub const Renderer = struct {
         _ = self.main.set(@intCast(screen.x), @intCast(screen.y), char);
     }
 
-    fn worldToNDC(_: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
+    // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
+    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
+        // takes care of translation
         const local = point.sub(viewmodel.pos);
-        const viewspace = vec.Vec3(f32).build(
-            local.inner_product(viewmodel.front),
-            local.inner_product(viewmodel.up),
-            local.inner_product(viewmodel.right),
+        // cool direction cosine trick to take care of all rotations
+        const viewspace = local.directionCosineVec(
+            viewmodel.front,
+            viewmodel.up,
+            viewmodel.right,
         );
 
-        const depth = viewspace.x;
-        if (depth < viewmodel.near_plane) return null;
+        if (viewspace.x < viewmodel.near_plane) {
+            std.debug.print("depth: {}\n\n", .{viewspace.x});
+            std.debug.print("point pos: {}\n\n", .{point});
+            std.debug.print("our pos: {}\n\n", .{viewmodel.pos});
+            return null;
+        }
 
-        const half_fov_tan = math.tan(viewmodel.vertical_fov / 2);
-        const projection_coefficient = 1 / (half_fov_tan * viewspace.z);
+        // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field
+        // -of-view-and-lens-length
+        const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
+        const proj_x, const proj_y = self.terminalProjectionCorrection(projection_coefficient);
 
+        // puts into NDC in screen-space basis
         return vec.Vec3(f32).build(
-            viewspace.z * projection_coefficient,
-            viewspace.y * projection_coefficient,
-            depth,
+            viewspace.z * proj_x,
+            -viewspace.y * proj_y,
+            viewspace.x,
         );
     }
 
@@ -112,7 +126,7 @@ pub const Renderer = struct {
 
         const floatx, const floaty = .{
             ndc.x * half_width + half_width,
-            -ndc.y * half_height + half_height,
+            ndc.y * half_height + half_height,
         };
         const xsigned: isize, const ysigned: isize = .{ @intFromFloat(floatx), @intFromFloat(floaty) };
 
@@ -125,7 +139,15 @@ pub const Renderer = struct {
             point.y < 1 and point.y > -1,
             point.z < viewmodel.far_plane and point.z > viewmodel.near_plane,
         };
+
         return viewx and viewy and viewz;
+    }
+
+    fn terminalProjectionCorrection(self: *Self, raw_coefficient: f32) struct { f32, f32 } {
+        return .{
+            raw_coefficient / self.terminal_info.screen_aspect,
+            raw_coefficient / self.terminal_info.char_apsect,
+        };
     }
 
     fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
