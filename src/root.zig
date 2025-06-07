@@ -22,3 +22,11 @@ pub fn randomVec3() vec.Vec3(f32) {
         randomf32Distribution(),
     );
 }
+
+pub fn linearInterpolateVec3(a: vec.Vec3(f32), b: vec.Vec3(f32), time: f32) vec.Vec3(f32) {
+    return vec.Vec3(f32).build(
+        a.x + time * (b.x - a.x),
+        a.y + time * (b.y - a.y),
+        a.z + time * (b.z - a.z),
+    );
+}

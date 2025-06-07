@@ -96,49 +96,55 @@ pub const Renderer = struct {
         if (!Self.isInView(viewmodel, ndc)) {
             return;
         }
-        const screen = self.NDCToScreenSpace(ndc);
+        const point = self.NDCToScreenspace(ndc);
 
-        _ = self.main.set(@intCast(screen.x), @intCast(screen.y), fill);
+        const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
+        _ = self.main.set(unsigned_x, unsigned_y, fill);
     }
 
     fn renderLine(self: *Self, viewmodel: *sim.Player, a: vec.Vec3(f32), b: vec.Vec3(f32), fill: u8) void {
-        const ndc_a, const ndc_b = .{
-            self.worldToNDC(viewmodel, a) orelse return,
-            self.worldToNDC(viewmodel, b) orelse return,
+        var view_a, var view_b = .{
+            self.worldToViewspace(viewmodel, a),
+            self.worldToViewspace(viewmodel, b),
         };
-        if (!Self.isInView(viewmodel, ndc_a) and !Self.isInView(viewmodel, ndc_b)) {
+        if (view_a.x < viewmodel.near_plane and view_b.x < viewmodel.near_plane) {
             return;
+        } else if (view_a.x < viewmodel.near_plane) {
+            Self.clipNear(&view_a, view_b, viewmodel);
+        } else if (view_b.x < viewmodel.near_plane) {
+            Self.clipNear(&view_b, view_a, viewmodel);
         }
+
+        const ndc_a, const ndc_b = .{
+            self.viewspaceToScreen(viewmodel, view_a),
+            self.viewspaceToScreen(viewmodel, view_b),
+        };
+
         const to, const from = .{
-            self.NDCToScreenSpace(ndc_a),
-            self.NDCToScreenSpace(ndc_b),
+            self.NDCToScreenspace(ndc_a),
+            self.NDCToScreenspace(ndc_b),
         };
 
         var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
 
         while (tracer.next()) |point| {
-            _ = self.main.set(@intCast(point.x), @intCast(point.y), fill);
+            const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
+            _ = self.main.set(unsigned_x, unsigned_y, fill);
         }
     }
 
-    // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
-    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
+    fn worldToViewspace(_: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) vec.Vec3(f32) {
         // takes care of translation
         const local = point.sub(viewmodel.pos);
         // cool direction cosine trick to take care of all rotations
-        const viewspace = local.directionCosineVec(
+        return local.directionCosineVec(
             viewmodel.front,
             viewmodel.up,
             viewmodel.right,
         );
+    }
 
-        if (viewspace.x < viewmodel.near_plane) {
-            std.debug.print("depth: {}\n\n", .{viewspace.x});
-            std.debug.print("point pos: {}\n\n", .{point});
-            std.debug.print("our pos: {}\n\n", .{viewmodel.pos});
-            return null;
-        }
-
+    fn viewspaceToScreen(self: *Self, viewmodel: *sim.Player, viewspace: vec.Vec3(f32)) vec.Vec3(f32) {
         // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field
         // -of-view-and-lens-length
         const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
@@ -152,7 +158,21 @@ pub const Renderer = struct {
         );
     }
 
-    fn NDCToScreenSpace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(isize) {
+    // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
+    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
+        const viewspace = self.worldToViewspace(viewmodel, point);
+
+        if (viewspace.x < viewmodel.near_plane) {
+            std.debug.print("depth: {}\n\n", .{viewspace.x});
+            std.debug.print("point pos: {}\n\n", .{point});
+            std.debug.print("our pos: {}\n\n", .{viewmodel.pos});
+            return null;
+        }
+
+        return self.viewspaceToScreen(viewmodel, viewspace);
+    }
+
+    fn NDCToScreenspace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(isize) {
         const half_width, const half_height = self.halfDimensionsFloat();
 
         const floatx, const floaty = .{
@@ -172,6 +192,11 @@ pub const Renderer = struct {
         };
 
         return viewx and viewy and viewz;
+    }
+
+    fn clipNear(target: *vec.Vec3(f32), other: vec.Vec3(f32), viewmodel: *sim.Player) void {
+        const time = (target.x - viewmodel.near_plane) / (other.x - target.x);
+        target.* = lib.linearInterpolateVec3(target.*, other, time);
     }
 
     fn terminalProjectionCorrection(self: *Self, raw_coefficient: f32) struct { f32, f32 } {

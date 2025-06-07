@@ -75,7 +75,7 @@ pub const Player = struct {
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,
             .move_speed = 0.1,
-            .near_plane = 0.1,
+            .near_plane = 0.01,
             .far_plane = 1000,
         };
     }
