@@ -7,6 +7,7 @@ pub const Simulation = struct {
     targets: std.ArrayList(Target),
     target_count: usize,
     player: Player,
+    tick: usize,
 
     const Self = @This();
 
@@ -15,6 +16,7 @@ pub const Simulation = struct {
             .targets = try std.ArrayList(Target).initCapacity(allocator, target_count),
             .target_count = target_count,
             .player = Player.new(),
+            .tick = 0,
         };
         simulation.addTarget();
 
@@ -27,6 +29,7 @@ pub const Simulation = struct {
 
     pub fn update(self: *Self, inputs: *Inputs) !void {
         self.player.update(inputs);
+        self.tick += 1;
     }
 
     fn addTarget(self: *Self) void {

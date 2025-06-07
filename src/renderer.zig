@@ -10,6 +10,7 @@ pub const Renderer = struct {
     width: usize,
     height: usize,
     terminal_info: TerminalInfo,
+    config: RenderConfig,
 
     const Self = @This();
     const Alloc = std.mem.Allocator;
@@ -32,6 +33,9 @@ pub const Renderer = struct {
             .height = height,
             // need to query this later for proper scale rendering
             .terminal_info = terminal_info,
+            .config = RenderConfig{
+                .render_freq = 3,
+            },
         };
     }
 
@@ -57,6 +61,13 @@ pub const Renderer = struct {
         self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, -50, -10), 'b');
         self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, 10), 'c');
         self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, -10), 'd');
+
+        self.renderLine(
+            &simulation.player,
+            vec.Vec3(f32).build(10, -50, 10),
+            vec.Vec3(f32).build(10, -50, -10),
+            '.',
+        );
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -80,14 +91,34 @@ pub const Renderer = struct {
         try buffer_writer.flush();
     }
 
-    fn renderDebugCharacter(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), char: u8) void {
+    fn renderDebugCharacter(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), fill: u8) void {
         const ndc = self.worldToNDC(viewmodel, position) orelse return;
         if (!Self.isInView(viewmodel, ndc)) {
             return;
         }
         const screen = self.NDCToScreenSpace(ndc);
 
-        _ = self.main.set(@intCast(screen.x), @intCast(screen.y), char);
+        _ = self.main.set(@intCast(screen.x), @intCast(screen.y), fill);
+    }
+
+    fn renderLine(self: *Self, viewmodel: *sim.Player, a: vec.Vec3(f32), b: vec.Vec3(f32), fill: u8) void {
+        const ndc_a, const ndc_b = .{
+            self.worldToNDC(viewmodel, a) orelse return,
+            self.worldToNDC(viewmodel, b) orelse return,
+        };
+        if (!Self.isInView(viewmodel, ndc_a) and !Self.isInView(viewmodel, ndc_b)) {
+            return;
+        }
+        const to, const from = .{
+            self.NDCToScreenSpace(ndc_a),
+            self.NDCToScreenSpace(ndc_b),
+        };
+
+        var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
+
+        while (tracer.next()) |point| {
+            _ = self.main.set(@intCast(point.x), @intCast(point.y), fill);
+        }
     }
 
     // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
@@ -283,5 +314,15 @@ pub const LineTracer = struct {
         }
 
         return point;
+    }
+};
+
+pub const RenderConfig = struct {
+    render_freq: usize,
+
+    const Self = @This();
+
+    pub fn shouldRender(self: *Self, tick: usize) bool {
+        return 0 == tick % self.render_freq;
     }
 };

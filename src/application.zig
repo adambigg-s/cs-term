@@ -26,9 +26,11 @@ pub const Application = struct {
 
             try self.simulation.update(&self.inputs);
 
-            self.renderer.clear();
-            self.renderer.renderSimulation(&self.simulation);
-            try self.renderer.commitPass();
+            if (self.renderer.config.shouldRender(self.simulation.tick)) {
+                self.renderer.clear();
+                self.renderer.renderSimulation(&self.simulation);
+                try self.renderer.commitPass();
+            }
 
             // debugging stuff
             {
