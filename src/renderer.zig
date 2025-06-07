@@ -5,7 +5,7 @@ const vec = lib.vec;
 const win = lib.win;
 
 pub const Renderer = struct {
-    main: Buffer(u32),
+    main: Buffer(u21),
     depth: Buffer(f32),
     width: usize,
     height: usize,
@@ -27,7 +27,7 @@ pub const Renderer = struct {
         terminal_info.screen_aspect = 2560.0 / 1080.0; // width x height of the terminal screen
 
         return Renderer{
-            .main = try Buffer(u32).init(width, height, allocator, ' '),
+            .main = try Buffer(u21).init(width, height, allocator, ' '),
             .depth = try Buffer(f32).init(width, height, allocator, Self.infinity),
             .width = width,
             .height = height,
@@ -64,9 +64,27 @@ pub const Renderer = struct {
 
         self.renderLine(
             &simulation.player,
-            vec.Vec3(f32).build(10, -50, 10),
-            vec.Vec3(f32).build(10, -50, -10),
+            vec.Vec3(f32).build(30, -2, 30),
+            vec.Vec3(f32).build(30, -2, -30),
             '.',
+        );
+        self.renderLine(
+            &simulation.player,
+            vec.Vec3(f32).build(30, -2, -30),
+            vec.Vec3(f32).build(-30, -2, -30),
+            ',',
+        );
+        self.renderLine(
+            &simulation.player,
+            vec.Vec3(f32).build(-30, -2, -30),
+            vec.Vec3(f32).build(-30, -2, 30),
+            '<',
+        );
+        self.renderLine(
+            &simulation.player,
+            vec.Vec3(f32).build(-30, -2, 30),
+            vec.Vec3(f32).build(30, -2, 30),
+            '`',
         );
     }
 
@@ -75,7 +93,7 @@ pub const Renderer = struct {
         var buffer_writer = std.io.bufferedWriter(stdout.writer());
         const writer = buffer_writer.writer();
         try writer.writeAll("\x1b[H");
-        try writer.writeAll("\x1b[48;2;70;70;70m");
+        try writer.writeAll("\x1b[48;2;110;110;110m");
         for (0..self.height) |y| {
             for (0..self.width) |x| {
                 const data = self.main.get(x, y).?;
@@ -195,7 +213,7 @@ pub const Renderer = struct {
     }
 
     fn clipNear(target: *vec.Vec3(f32), other: vec.Vec3(f32), viewmodel: *sim.Player) void {
-        const time = (target.x - viewmodel.near_plane) / (other.x - target.x);
+        const time = (viewmodel.near_plane - target.x) / (other.x - target.x);
         target.* = lib.linearInterpolateVec3(target.*, other, time);
     }
 
