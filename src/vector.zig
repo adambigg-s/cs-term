@@ -204,6 +204,10 @@ pub fn Vec4(comptime T: type) type {
             return Self.build(value, value, value, value);
         }
 
+        pub fn fromVec3(vec: Vec3(T), w: T) Self {
+            return Self.build(vec.x, vec.y, vec.z, w);
+        }
+
         pub fn neg(self: Self) Self {
             return Self.build(-self.x, -self.y, -self.y, -self.w);
         }
