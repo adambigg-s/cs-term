@@ -2,7 +2,7 @@ const lib = @import("root.zig");
 
 pub fn main() !void {
     var general_allocator = lib.std.heap.DebugAllocator(.{}).init;
-    defer lib.std.debug.print("allocator status: {}", .{general_allocator.deinit()});
+    defer lib.std.debug.print("allocator health status: {}", .{general_allocator.deinit()});
 
     var app = lib.app.Application{
         .inputs = lib.sim.Inputs.init(),

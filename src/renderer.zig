@@ -72,28 +72,28 @@ pub const Renderer = struct {
             const a = Vec3.build(p1[0], p1[1], p1[2]);
             const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLineClipped(&simulation.player, a, b, '*');
+            self.renderLine(&simulation.player, a, b, '*');
         }
 
-        self.renderLineClipped(
+        self.renderLine(
             &simulation.player,
             Vec3.build(30, -2, 30),
             Vec3.build(30, -2, -30),
             '.',
         );
-        self.renderLineClipped(
+        self.renderLine(
             &simulation.player,
             Vec3.build(30, -2, -30),
             Vec3.build(-30, -2, -30),
             ',',
         );
-        self.renderLineClipped(
+        self.renderLine(
             &simulation.player,
             Vec3.build(-30, -2, -30),
             Vec3.build(-30, -2, 30),
             '<',
         );
-        self.renderLineClipped(
+        self.renderLine(
             &simulation.player,
             Vec3.build(-30, -2, 30),
             Vec3.build(30, -2, 30),

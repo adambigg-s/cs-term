@@ -5,6 +5,7 @@ pub const ren = @import("renderer.zig");
 pub const sim = @import("simulation.zig");
 pub const vec = @import("vector.zig");
 pub const win = @import("winapi.zig");
+pub const mat = @import("matrix.zig");
 
 pub fn randomf32() f32 {
     var rng = std.Random.DefaultPrng.init(@intCast(std.time.microTimestamp()));
@@ -29,4 +30,13 @@ pub fn linearInterpolateVec3(a: vec.Vec3(f32), b: vec.Vec3(f32), time: f32) vec.
         a.y + time * (b.y - a.y),
         a.z + time * (b.z - a.z),
     );
+}
+
+test "module tree test distribtuion entry point" {
+    _ = @import("application.zig");
+    _ = @import("renderer.zig");
+    _ = @import("simulation.zig");
+    _ = @import("vector.zig");
+    _ = @import("winapi.zig");
+    _ = @import("matrix.zig");
 }

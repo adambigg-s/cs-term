@@ -5,6 +5,7 @@
 
 pub const WinError = error{
     NullResponse,
+    Recoverable,
 };
 
 pub fn showCursor() void {
@@ -23,7 +24,7 @@ pub fn getCursorPosition() !struct { i32, i32 } {
     var point: WinPoint = undefined;
     const response = GetCursorPos(&point);
     if (response == win_false) {
-        return WinError.NullResponse;
+        return WinError.Recoverable;
     }
 
     return .{ @intCast(point.x), @intCast(point.y) };
@@ -62,7 +63,7 @@ pub fn getConsoleScreenBufferInfo() !WinConsoleInfo {
     var info: WinConsoleInfo = undefined;
     const response = GetConsoleScreenBufferInfo(handle, &info);
     if (response == win_false) {
-        return WinError.NullResponse;
+        return WinError.Recoverable;
     }
 
     return info;
