@@ -70,7 +70,7 @@ pub const Player = struct {
             .world_up = vec.Vec3(f32).build(0, 1, 0),
             .pitch = 0,
             .yaw = 0,
-            .vertical_fov = math.degreesToRadians(30),
+            .vertical_fov = math.degreesToRadians(45),
             .look_sensitivity = 2.5,
             .yaw_modifier = 0.01,
             .pitch_modifier = 0.01,
@@ -119,7 +119,7 @@ pub const Player = struct {
 
         self.yaw -= math.degreesToRadians(yaw_delta);
         self.pitch -= math.degreesToRadians(pitch_delta);
-        self.pitch = math.clamp(self.pitch, math.degreesToRadians(-85), math.degreesToRadians(85));
+        self.pitch = math.clamp(self.pitch, math.degreesToRadians(-89), math.degreesToRadians(89));
     }
 
     fn updateVectors(self: *Self) void {
@@ -130,10 +130,10 @@ pub const Player = struct {
         );
         self.front = self.front.normalize();
 
-        self.right = self.front.cross_product(self.world_up);
+        self.right = self.front.crossProduct(self.world_up);
         self.right = self.right.normalize();
 
-        self.up = self.right.cross_product(self.front);
+        self.up = self.right.crossProduct(self.front);
         self.up = self.up.normalize();
     }
 };

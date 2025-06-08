@@ -14,6 +14,7 @@ pub const Renderer = struct {
 
     const Self = @This();
     const Alloc = std.mem.Allocator;
+    const Vec3 = vec.Vec3(f32);
 
     const infinity = 1e9;
     const epsilon = 1e-9;
@@ -22,16 +23,16 @@ pub const Renderer = struct {
 
     pub fn init(allocator: Alloc) !Self {
         const width, const height = try win.getTerminalDimensions();
+        // need to query this later for proper scale rendering
         var terminal_info: TerminalInfo = undefined;
-        terminal_info.char_apsect = 1.5; // height x width of the terminal character
-        terminal_info.screen_aspect = 2560.0 / 1080.0; // width x height of the terminal screen
+        terminal_info.char_apsect = 1.3; // height x width of the terminal character
+        terminal_info.screen_aspect = 3000.0 / 1080.0; // width x height of the terminal screen
 
         return Renderer{
             .main = try Buffer(u21).init(width, height, allocator, ' '),
             .depth = try Buffer(f32).init(width, height, allocator, Self.infinity),
             .width = width,
             .height = height,
-            // need to query this later for proper scale rendering
             .terminal_info = terminal_info,
             .config = RenderConfig{
                 .render_freq = 3,
@@ -51,51 +52,51 @@ pub const Renderer = struct {
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
         for (simulation.targets.items) |target| {
-            self.renderDebugCharacter(&simulation.player, target.pos, 'X');
+            self.renderPoint(&simulation.player, target.pos, 'X');
         }
         // other debug stuff right in front
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 0, 1.5), 'a');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, 1.5, 0), 'b');
+        self.renderPoint(&simulation.player, Vec3.build(10, 0, 1.5), 'a');
+        self.renderPoint(&simulation.player, Vec3.build(10, 1.5, 0), 'b');
         // large square on the ground
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, -50, 10), 'a');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(10, -50, -10), 'b');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, 10), 'c');
-        self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, -10), 'd');
+        self.renderPoint(&simulation.player, Vec3.build(10, -50, 10), 'a');
+        self.renderPoint(&simulation.player, Vec3.build(10, -50, -10), 'b');
+        self.renderPoint(&simulation.player, Vec3.build(-10, -50, 10), 'c');
+        self.renderPoint(&simulation.player, Vec3.build(-10, -50, -10), 'd');
 
-        var box = Box3.build(vec.Vec3(f32).build(-70, -70, -70), vec.Vec3(f32).build(70, 70, 70));
+        var box = Box3.build(Vec3.build(-70, -70, -70), Vec3.build(70, 70, 70));
         const edges = box.toLinestrip();
 
         for (0..edges.len / 2) |index| {
             const p1 = edges[2 * index + 0];
             const p2 = edges[2 * index + 1];
-            const a = vec.Vec3(f32).build(p1[0], p1[1], p1[2]);
-            const b = vec.Vec3(f32).build(p2[0], p2[1], p2[2]);
+            const a = Vec3.build(p1[0], p1[1], p1[2]);
+            const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLine(&simulation.player, a, b, '*');
+            self.renderLineClipped(&simulation.player, a, b, '*');
         }
 
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
-            vec.Vec3(f32).build(30, -2, 30),
-            vec.Vec3(f32).build(30, -2, -30),
+            Vec3.build(30, -2, 30),
+            Vec3.build(30, -2, -30),
             '.',
         );
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
-            vec.Vec3(f32).build(30, -2, -30),
-            vec.Vec3(f32).build(-30, -2, -30),
+            Vec3.build(30, -2, -30),
+            Vec3.build(-30, -2, -30),
             ',',
         );
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
-            vec.Vec3(f32).build(-30, -2, -30),
-            vec.Vec3(f32).build(-30, -2, 30),
+            Vec3.build(-30, -2, -30),
+            Vec3.build(-30, -2, 30),
             '<',
         );
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
-            vec.Vec3(f32).build(-30, -2, 30),
-            vec.Vec3(f32).build(30, -2, 30),
+            Vec3.build(-30, -2, 30),
+            Vec3.build(30, -2, 30),
             '`',
         );
     }
@@ -123,18 +124,25 @@ pub const Renderer = struct {
         try buffer_writer.flush();
     }
 
-    fn renderDebugCharacter(self: *Self, viewmodel: *sim.Player, position: vec.Vec3(f32), fill: u8) void {
-        const ndc = self.worldToNDC(viewmodel, position) orelse return;
-        if (!Self.isInView(viewmodel, ndc)) {
+    fn renderPoint(self: *Self, viewmodel: *sim.Player, position: Vec3, fill: u8) void {
+        const viewspace = self.worldToViewspace(viewmodel, position);
+
+        const ndc = self.viewspaceToNDC(viewmodel, viewspace);
+
+        if (!self.isInView(viewmodel, ndc)) {
             return;
         }
-        const point = self.NDCToScreenspace(ndc);
 
-        const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
+        const screenspace = self.NDCToScreenspace(ndc);
+
+        const unsigned_x: usize, const unsigned_y: usize = .{
+            @bitCast(screenspace.x),
+            @bitCast(screenspace.y),
+        };
         _ = self.main.set(unsigned_x, unsigned_y, fill);
     }
 
-    fn renderLine(self: *Self, viewmodel: *sim.Player, a: vec.Vec3(f32), b: vec.Vec3(f32), fill: u8) void {
+    fn renderLine(self: *Self, viewmodel: *sim.Player, a: Vec3, b: Vec3, fill: u8) void {
         var view_a, var view_b = .{
             self.worldToViewspace(viewmodel, a),
             self.worldToViewspace(viewmodel, b),
@@ -171,10 +179,25 @@ pub const Renderer = struct {
         }
     }
 
-    fn worldToViewspace(_: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) vec.Vec3(f32) {
+    fn renderLineClipped(self: *Self, viewmodel: *sim.Player, a: Vec3, b: Vec3, fill: u8) void {
+        const va, const vb = .{
+            self.worldToViewspace(viewmodel, a),
+            self.worldToViewspace(viewmodel, b),
+        };
+
+        const ndca, const ndcb = .{
+            self.viewspaceToNDC(viewmodel, va),
+            self.viewspaceToNDC(viewmodel, vb),
+        };
+
+        _ = .{ ndca, ndcb, fill };
+    }
+
+    fn worldToViewspace(_: *Self, viewmodel: *sim.Player, point: Vec3) Vec3 {
         // takes care of translation
         const local = point.sub(viewmodel.pos);
         // cool direction cosine trick to take care of all rotations
+        // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
         return local.directionCosineVec(
             viewmodel.front,
             viewmodel.up,
@@ -182,44 +205,35 @@ pub const Renderer = struct {
         );
     }
 
-    fn viewspaceToNDC(self: *Self, viewmodel: *sim.Player, viewspace: vec.Vec3(f32)) vec.Vec3(f32) {
+    fn viewspaceToNDC(self: *Self, viewmodel: *sim.Player, viewspace: Vec3) Vec3 {
         // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field
         // -of-view-and-lens-length
         const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
+
         const proj_x, const proj_y = self.terminalProjectionCorrection(projection_coefficient);
 
         // puts into NDC in screen-space basis
-        return vec.Vec3(f32).build(
+        return Vec3.build(
             viewspace.z * proj_x,
             -viewspace.y * proj_y,
             viewspace.x,
         );
     }
 
-    // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
-    fn worldToNDC(self: *Self, viewmodel: *sim.Player, point: vec.Vec3(f32)) ?vec.Vec3(f32) {
-        const viewspace = self.worldToViewspace(viewmodel, point);
-
-        if (viewspace.x < viewmodel.near_plane) {
-            return null;
-        }
-
-        return self.viewspaceToNDC(viewmodel, viewspace);
-    }
-
-    fn NDCToScreenspace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(isize) {
+    fn NDCToScreenspace(self: *Self, ndc: Vec3) vec.Vec2(isize) {
         const half_width, const half_height = self.halfDimensionsFloat();
 
         const floatx, const floaty = .{
             ndc.x * half_width + half_width,
             ndc.y * half_height + half_height,
         };
+
         const xsigned: isize, const ysigned: isize = .{ @intFromFloat(floatx), @intFromFloat(floaty) };
 
         return vec.Vec2(isize).build(xsigned, ysigned);
     }
 
-    fn isInView(viewmodel: *sim.Player, point: vec.Vec3(f32)) bool {
+    fn isInView(_: *Self, viewmodel: *sim.Player, point: Vec3) bool {
         const viewx, const viewy, const viewz = .{
             point.x < 1 and point.x > -1,
             point.y < 1 and point.y > -1,
@@ -229,7 +243,7 @@ pub const Renderer = struct {
         return viewx and viewy and viewz;
     }
 
-    fn clipNear(target: *vec.Vec3(f32), other: vec.Vec3(f32), viewmodel: *sim.Player) void {
+    fn clipNear(target: *Vec3, other: Vec3, viewmodel: *sim.Player) void {
         const time = (viewmodel.near_plane - target.x) / (other.x - target.x);
         target.* = lib.linearInterpolateVec3(target.*, other, time);
     }

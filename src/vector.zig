@@ -40,20 +40,20 @@ pub fn Vec2(comptime T: type) type {
             return Self.build(self.x * inv, self.y * inv);
         }
 
-        pub fn inner_product(self: Self, other: Self) T {
+        pub fn innerProduct(self: Self, other: Self) T {
             return self.x * other.x + self.y * other.y;
         }
 
-        pub fn cross_product(self: Self, other: Self) T {
+        pub fn crossProduct(self: Self, other: Self) T {
             return self.x * other.y - self.y * other.x;
         }
 
-        pub fn length_sq(self: Self) T {
-            return self.inner_product(self);
+        pub fn lengthSq(self: Self) T {
+            return self.innerProduct(self);
         }
 
         pub fn length(self: Self) T {
-            return math.sqrt(self.length_sq());
+            return math.sqrt(self.lengthSq());
         }
 
         pub fn normalize(self: Self) Self {
@@ -107,11 +107,11 @@ pub fn Vec3(comptime T: type) type {
             return Self.build(self.x * inv, self.y * inv, self.z * inv);
         }
 
-        pub fn inner_product(self: Self, other: Self) T {
+        pub fn innerProduct(self: Self, other: Self) T {
             return self.x * other.x + self.y * other.y + self.z * other.z;
         }
 
-        pub fn cross_product(self: Self, other: Self) Self {
+        pub fn crossProduct(self: Self, other: Self) Self {
             return Self.build(
                 self.y * other.z - self.z * other.y,
                 -(self.x * other.z - self.z * other.x),
@@ -119,12 +119,12 @@ pub fn Vec3(comptime T: type) type {
             );
         }
 
-        pub fn length_sq(self: Self) T {
-            return self.inner_product(self);
+        pub fn lengthSq(self: Self) T {
+            return self.innerProduct(self);
         }
 
         pub fn length(self: Self) T {
-            return math.sqrt(self.length_sq());
+            return math.sqrt(self.lengthSq());
         }
 
         pub fn rotateX(self: Self, angle: T) Self {
@@ -175,9 +175,9 @@ pub fn Vec3(comptime T: type) type {
 
         pub fn directionCosineVec(self: Self, xp: Self, yp: Self, zp: Self) Self {
             return Self.build(
-                self.inner_product(xp),
-                self.inner_product(yp),
-                self.inner_product(zp),
+                self.innerProduct(xp),
+                self.innerProduct(yp),
+                self.innerProduct(zp),
             );
         }
     };
@@ -225,16 +225,16 @@ pub fn Vec4(comptime T: type) type {
             return Self.build(self.x * inv, self.y * inv, self.z * inv, self.w * inv);
         }
 
-        pub fn inner_product(self: Self, other: Self) T {
+        pub fn innerProduct(self: Self, other: Self) T {
             return self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
         }
 
-        pub fn length_sq(self: Self) T {
-            return self.inner_product(self);
+        pub fn lengthSq(self: Self) T {
+            return self.innerProduct(self);
         }
 
         pub fn length(self: Self) T {
-            return math.sqrt(self.length_sq());
+            return math.sqrt(self.lengthSq());
         }
 
         pub fn normalize(self: Self) Self {
