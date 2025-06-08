@@ -62,6 +62,18 @@ pub const Renderer = struct {
         self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, 10), 'c');
         self.renderDebugCharacter(&simulation.player, vec.Vec3(f32).build(-10, -50, -10), 'd');
 
+        var box = Box3.build(vec.Vec3(f32).build(-70, -70, -70), vec.Vec3(f32).build(70, 70, 70));
+        const edges = box.toLinestrip();
+
+        for (0..edges.len / 2) |index| {
+            const p1 = edges[2 * index + 0];
+            const p2 = edges[2 * index + 1];
+            const a = vec.Vec3(f32).build(p1[0], p1[1], p1[2]);
+            const b = vec.Vec3(f32).build(p2[0], p2[1], p2[2]);
+
+            self.renderLine(&simulation.player, a, b, '*');
+        }
+
         self.renderLine(
             &simulation.player,
             vec.Vec3(f32).build(30, -2, 30),
@@ -136,8 +148,8 @@ pub const Renderer = struct {
         }
 
         const ndc_a, const ndc_b = .{
-            self.viewspaceToScreen(viewmodel, view_a),
-            self.viewspaceToScreen(viewmodel, view_b),
+            self.viewspaceToNDC(viewmodel, view_a),
+            self.viewspaceToNDC(viewmodel, view_b),
         };
 
         const to, const from = .{
@@ -170,7 +182,7 @@ pub const Renderer = struct {
         );
     }
 
-    fn viewspaceToScreen(self: *Self, viewmodel: *sim.Player, viewspace: vec.Vec3(f32)) vec.Vec3(f32) {
+    fn viewspaceToNDC(self: *Self, viewmodel: *sim.Player, viewspace: vec.Vec3(f32)) vec.Vec3(f32) {
         // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field
         // -of-view-and-lens-length
         const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
@@ -192,7 +204,7 @@ pub const Renderer = struct {
             return null;
         }
 
-        return self.viewspaceToScreen(viewmodel, viewspace);
+        return self.viewspaceToNDC(viewmodel, viewspace);
     }
 
     fn NDCToScreenspace(self: *Self, ndc: vec.Vec3(f32)) vec.Vec2(isize) {
@@ -372,5 +384,47 @@ pub const RenderConfig = struct {
 
     pub fn shouldRender(self: *Self, tick: usize) bool {
         return 0 == tick % self.render_freq;
+    }
+};
+
+pub const Box3 = struct {
+    min: Vec3,
+    max: Vec3,
+
+    const Self = @This();
+    const Vec3 = vec.Vec3(f32);
+
+    pub fn build(min: Vec3, max: Vec3) Self {
+        return Box3{ .min = min, .max = max };
+    }
+
+    pub fn toLinestrip(self: *Self) [24][3]f32 {
+        var output: [24][3]f32 = undefined;
+
+        const min, const max = .{ self.min, self.max };
+
+        const corners: [8][3]f32 = .{
+            .{ min.x, min.y, min.z },
+            .{ max.x, min.y, min.z },
+            .{ max.x, max.y, min.z },
+            .{ min.x, max.y, min.z },
+            .{ min.x, min.y, max.z },
+            .{ max.x, min.y, max.z },
+            .{ max.x, max.y, max.z },
+            .{ min.x, max.y, max.z },
+        };
+
+        const indices: [12][2]usize = .{
+            .{ 0, 1 }, .{ 1, 2 }, .{ 2, 3 }, .{ 3, 0 },
+            .{ 4, 5 }, .{ 5, 6 }, .{ 6, 7 }, .{ 4, 4 },
+            .{ 0, 4 }, .{ 1, 5 }, .{ 2, 6 }, .{ 3, 7 },
+        };
+
+        for (indices, 0..indices.len) |pair, index| {
+            output[index * 2 + 0] = corners[pair[0]];
+            output[index * 2 + 1] = corners[pair[1]];
+        }
+
+        return output;
     }
 };
