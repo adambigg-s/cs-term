@@ -72,7 +72,7 @@ pub const Renderer = struct {
             const a = Vec3.build(p1[0], p1[1], p1[2]);
             const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLine(&simulation.player, a, b, '*');
+            self.renderLineClipped(&simulation.player, a, b, '*');
         }
 
         self.renderLine(
@@ -180,22 +180,56 @@ pub const Renderer = struct {
     }
 
     fn renderLineClipped(self: *Self, viewmodel: *sim.Player, a: Vec3, b: Vec3, fill: u8) void {
-        const va, const vb = .{
+        var va, var vb = .{
             self.worldToViewspace(viewmodel, a),
             self.worldToViewspace(viewmodel, b),
         };
+
+        if (va.x < viewmodel.near_plane and vb.x < viewmodel.near_plane) return;
+
+        if (va.x < viewmodel.near_plane) self.clipPlane(&va, vb, viewmodel.near_plane, Axis3.x);
+        if (vb.x < viewmodel.near_plane) self.clipPlane(&vb, va, viewmodel.near_plane, Axis3.x);
+
+        // honestly no idea why this isn't working...
+        // shouldn't have to check this many things but i just want it to work
+        // first before making it efficient
+        self.clipSymmetric(&va, vb, 1, .y);
+        self.clipSymmetric(&va, vb, -1, .y);
+        self.clipSymmetric(&va, vb, 1, .z);
+        self.clipSymmetric(&va, vb, -1, .z);
+        self.clipSymmetric(&vb, va, 1, .y);
+        self.clipSymmetric(&vb, va, -1, .y);
+        self.clipSymmetric(&vb, va, 1, .z);
+        self.clipSymmetric(&vb, va, -1, .z);
 
         const ndca, const ndcb = .{
             self.viewspaceToNDC(viewmodel, va),
             self.viewspaceToNDC(viewmodel, vb),
         };
 
-        _ = .{ ndca, ndcb, fill };
+        const to, const from = .{
+            self.NDCToScreenspace(ndca),
+            self.NDCToScreenspace(ndcb),
+        };
+
+        const to_inbounds, const from_inbounds = .{
+            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
+            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
+        };
+        if (!to_inbounds and !from_inbounds) return;
+
+        var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
+
+        while (tracer.next()) |point| {
+            const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
+            _ = self.main.set(unsigned_x, unsigned_y, fill);
+        }
     }
 
     fn worldToViewspace(_: *Self, viewmodel: *sim.Player, point: Vec3) Vec3 {
         // takes care of translation
         const local = point.sub(viewmodel.pos);
+
         // cool direction cosine trick to take care of all rotations
         // https://moorepants.github.io/learn-multibody-dynamics/orientation.html
         return local.directionCosineVec(
@@ -243,6 +277,28 @@ pub const Renderer = struct {
         return viewx and viewy and viewz;
     }
 
+    fn clipPlane(_: *Self, target: *Vec3, other: Vec3, plane: f32, axis: Axis3) void {
+        const time = switch (axis) {
+            Axis3.x => (plane - target.x) / (other.x - target.x),
+            Axis3.y => (plane - target.y) / (other.y - target.y),
+            Axis3.z => (plane - target.z) / (other.z - target.z),
+        };
+
+        target.* = lib.linearInterpolateVec3(target.*, other, time);
+    }
+
+    fn clipSymmetric(self: *Self, target: *Vec3, other: Vec3, plane: f32, axis: Axis3) void {
+        const value = switch (axis) {
+            Axis3.x => target.x,
+            Axis3.y => target.y,
+            Axis3.z => target.z,
+        };
+
+        if ((plane > 0 and value > plane) or (plane < 0 and value < plane)) {
+            self.clipPlane(target, other, plane, axis);
+        }
+    }
+
     fn clipNear(target: *Vec3, other: Vec3, viewmodel: *sim.Player) void {
         const time = (viewmodel.near_plane - target.x) / (other.x - target.x);
         target.* = lib.linearInterpolateVec3(target.*, other, time);
@@ -258,6 +314,12 @@ pub const Renderer = struct {
     fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
         return .{ @as(f32, @floatFromInt(self.width)) / 2, @as(f32, @floatFromInt(self.height)) / 2 };
     }
+};
+
+pub const Axis3 = enum {
+    x,
+    y,
+    z,
 };
 
 pub const TerminalInfo = struct {
@@ -401,6 +463,7 @@ pub const RenderConfig = struct {
     }
 };
 
+// strictly for debugging at this point - more efficient one added later
 pub const Box3 = struct {
     min: Vec3,
     max: Vec3,
@@ -430,7 +493,7 @@ pub const Box3 = struct {
 
         const indices: [12][2]usize = .{
             .{ 0, 1 }, .{ 1, 2 }, .{ 2, 3 }, .{ 3, 0 },
-            .{ 4, 5 }, .{ 5, 6 }, .{ 6, 7 }, .{ 4, 4 },
+            .{ 4, 5 }, .{ 5, 6 }, .{ 6, 7 }, .{ 7, 4 },
             .{ 0, 4 }, .{ 1, 5 }, .{ 2, 6 }, .{ 3, 7 },
         };
 
