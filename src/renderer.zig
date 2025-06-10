@@ -23,6 +23,7 @@ pub const Renderer = struct {
 
     pub fn init(allocator: Alloc) !Self {
         const width, const height = try win.getTerminalDimensions();
+
         // need to query this later for proper scale rendering
         var terminal_info: TerminalInfo = undefined;
         terminal_info.char_apsect = 1.3; // height x width of the terminal character
@@ -35,7 +36,7 @@ pub const Renderer = struct {
             .height = height,
             .terminal_info = terminal_info,
             .config = RenderConfig{
-                .render_freq = 3,
+                .render_freq = 3, // should probably query and reset
             },
         };
     }
@@ -72,7 +73,7 @@ pub const Renderer = struct {
             const a = Vec3.build(p1[0], p1[1], p1[2]);
             const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLineClipped(&simulation.player, a, b, '*');
+            self.renderLine(&simulation.player, a, b, '*');
         }
 
         self.renderLine(
@@ -105,8 +106,10 @@ pub const Renderer = struct {
         var stdout = std.io.getStdOut();
         var buffer_writer = std.io.bufferedWriter(stdout.writer());
         const writer = buffer_writer.writer();
+
         try writer.writeAll("\x1b[H");
         try writer.writeAll("\x1b[48;2;110;110;110m");
+        try writer.writeAll("\x1b[?25l");
         for (0..self.height) |y| {
             for (0..self.width) |x| {
                 const data = self.main.get(x, y).?;
@@ -120,6 +123,7 @@ pub const Renderer = struct {
             try writer.writeByte('\n');
         }
         try writer.writeAll("\x1b[0m");
+        try writer.writeAll("\x1b[?25h");
 
         try buffer_writer.flush();
     }
@@ -172,7 +176,6 @@ pub const Renderer = struct {
         if (!to_inbounds and !from_inbounds) return;
 
         var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
-
         while (tracer.next()) |point| {
             const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
             _ = self.main.set(unsigned_x, unsigned_y, fill);
@@ -219,7 +222,6 @@ pub const Renderer = struct {
         if (!to_inbounds and !from_inbounds) return;
 
         var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
-
         while (tracer.next()) |point| {
             const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
             _ = self.main.set(unsigned_x, unsigned_y, fill);
@@ -434,6 +436,7 @@ pub const LineTracer = struct {
         const point = vec.Vec2(isize).build(self.x0, self.y0);
 
         const err2 = 2 * self.err;
+
         if (err2 >= self.dy) {
             if (self.x1 == self.x0) {
                 self.done = true;
@@ -441,6 +444,7 @@ pub const LineTracer = struct {
             self.err += self.dy;
             self.x0 += self.sx;
         }
+
         if (err2 <= self.dx) {
             if (self.y1 == self.y0) {
                 self.done = true;

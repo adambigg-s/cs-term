@@ -35,7 +35,7 @@ pub const Simulation = struct {
     fn addTarget(self: *Self) void {
         // ensure there is one target direclty where you spawn for debugging
         self.targets.append(Target{
-            .pos = vec.Vec3(f32).build(30, 0, 0),
+            .pos = vec.Vec3(f32).build(0, 0, 0),
             .size = 0,
         }) catch return;
     }

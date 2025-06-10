@@ -34,20 +34,25 @@ pub const Application = struct {
 
             // debugging stuff
             {
-                // const math = std.math;
-                // const view = &self.simulation.player;
-                // std.debug.print("\x1b[0Hposition: {}\npitch: {}\nyaw: {}\nfront: {any}\nright: {any}\nup: {any}\n", .{
-                //     view.pos,
-                //     math.radiansToDegrees(view.pitch),
-                //     math.radiansToDegrees(view.yaw),
-                //     view.front,
-                //     view.right,
-                //     view.up,
-                // });
-                // const info = win.getConsoleScreenBufferInfo() catch null;
-                // std.debug.print("\x1b[10Hinfo: {any}\n", .{info});
-                // std.debug.print("buffer size: {}, {}\n", .{ self.renderer.width, self.renderer.height });
-                // std.debug.print("inputs struct: {any}", .{self.inputs});
+                const math = std.math;
+                const view = &self.simulation.player;
+
+                std.debug.print("\x1b[0Hposition: {}\npitch: {}\nyaw: {}\n", .{
+                    view.pos,
+                    math.radiansToDegrees(view.pitch),
+                    math.radiansToDegrees(view.yaw),
+                });
+                std.debug.print("front: {any}\nright: {any}\n up: {any}\n", .{
+                    view.front,
+                    view.right,
+                    view.up,
+                });
+
+                const info = win.getConsoleScreenBufferInfo() catch null;
+                std.debug.print("\x1b[10Hinfo: {any}\n", .{info});
+                std.debug.print("buffer size: {}, {}\n", .{ self.renderer.width, self.renderer.height });
+
+                std.debug.print("inputs struct: {any}\n", .{self.inputs});
             }
         }
     }
