@@ -26,8 +26,8 @@ pub const Renderer = struct {
 
         // need to query this later for proper scale rendering
         var terminal_info: TerminalInfo = undefined;
-        terminal_info.char_apsect = 1.3; // height x width of the terminal character
-        terminal_info.screen_aspect = 3000.0 / 1080.0; // width x height of the terminal screen
+        terminal_info.char_apsect = 1.2; // height x width of the terminal character
+        terminal_info.screen_aspect = 2800.0 / 1080.0; // width x height of the terminal screen
 
         return Renderer{
             .main = try Buffer(u21).init(width, height, allocator, ' '),
@@ -36,7 +36,7 @@ pub const Renderer = struct {
             .height = height,
             .terminal_info = terminal_info,
             .config = RenderConfig{
-                .render_freq = 3, // should probably query and reset
+                .render_freq = 5, // should probably query and reset
             },
         };
     }
@@ -52,13 +52,14 @@ pub const Renderer = struct {
     }
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
+        // draws and X for the actual targets rn
         for (simulation.targets.items) |target| {
             self.renderPoint(&simulation.player, target.pos, 'X');
         }
 
+        // debug box drawn just to make sure clipping and stuff working
         var box = Box3.build(Vec3.build(-100, -100, -100), Vec3.build(100, 100, 100));
         const edges = box.toLinestrip();
-
         for (0..edges.len / 2) |index| {
             const p1 = edges[2 * index + 0];
             const p2 = edges[2 * index + 1];
@@ -67,31 +68,6 @@ pub const Renderer = struct {
 
             self.renderLineClipped(&simulation.player, a, b, '*');
         }
-
-        self.renderLineClipped(
-            &simulation.player,
-            Vec3.build(30, -2, 30),
-            Vec3.build(30, -2, -30),
-            '.',
-        );
-        self.renderLineClipped(
-            &simulation.player,
-            Vec3.build(30, -2, -30),
-            Vec3.build(-30, -2, -30),
-            ',',
-        );
-        self.renderLineClipped(
-            &simulation.player,
-            Vec3.build(-30, -2, -30),
-            Vec3.build(-30, -2, 30),
-            '<',
-        );
-        self.renderLineClipped(
-            &simulation.player,
-            Vec3.build(-30, -2, 30),
-            Vec3.build(30, -2, 30),
-            '`',
-        );
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -152,7 +128,8 @@ pub const Renderer = struct {
             Self.clipNear(&viewspace_b, viewspace_a, viewmodel);
         }
 
-        if (!self.clipLineToFrustum(&viewspace_a, &viewspace_b)) {
+        const frustum = self.makeFrustum(viewmodel);
+        if (!self.clipLineToFrustum(&viewspace_a, &viewspace_b, frustum)) {
             return;
         }
 
@@ -223,7 +200,32 @@ pub const Renderer = struct {
         return viewx and viewy and viewz;
     }
 
-    fn clipLineToFrustum(self: *Self, a: *Vec3, b: *Vec3) bool {
+    fn makeFrustum(self: *Self, viewmodel: *sim.Player) Frustum {
+        const half_tan_fov = math.tan(viewmodel.vertical_fov / 2);
+        const vertical_modifier = half_tan_fov;
+        const horizontal_modifier = vertical_modifier * self.terminal_info.screen_aspect;
+
+        return Frustum{
+            .vertical_positive = FrustumPlane{
+                .axis = FrustumPlane.Axis3.y,
+                .coefficient = vertical_modifier,
+            },
+            .horizontal_positive = FrustumPlane{
+                .axis = FrustumPlane.Axis3.z,
+                .coefficient = horizontal_modifier,
+            },
+            .vertical_negative = FrustumPlane{
+                .axis = FrustumPlane.Axis3.y,
+                .coefficient = -vertical_modifier,
+            },
+            .horizontal_negative = FrustumPlane{
+                .axis = FrustumPlane.Axis3.z,
+                .coefficient = -horizontal_modifier,
+            },
+        };
+    }
+
+    fn clipLineToFrustum(self: *Self, a: *Vec3, b: *Vec3, frustum: Frustum) bool {
         // https://chaosinmotion.com/2016/05/22/3d-clipping-in-homogeneous-coordinates/comment-page-1/
         // slightly faster way to clip lines in a software rasterizer, despite
         // looking much more complex this only uses 3D coordinate space so
@@ -237,42 +239,44 @@ pub const Renderer = struct {
         //     y: up
         //     z: right
 
-        // clipping against (up = -depth)
-        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.y, -1)) {
+        // clipping against (up = -depth * vertical fov)
+        if (!self.clipLineAgainstFrustumPlane(a, b, frustum.horizontal_negative)) {
             return false;
         }
-        // clipping against (up = depth)
-        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.y, 1)) {
+        // clipping against (up = depth * vertical fov)
+        if (!self.clipLineAgainstFrustumPlane(a, b, frustum.horizontal_positive)) {
             return false;
         }
-        // clipping against (right = -depth)
-        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.z, -2)) {
+        // clipping against (right = -depth * horizontal fov)
+        if (!self.clipLineAgainstFrustumPlane(a, b, frustum.vertical_negative)) {
             return false;
         }
-        // clipping against (right = depth)
-        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.z, 2)) {
+        // clipping against (right = depth * horizontal fov)
+        if (!self.clipLineAgainstFrustumPlane(a, b, frustum.vertical_positive)) {
             return false;
         }
 
         return true;
     }
 
-    fn clipLineAgainstFrustumPlane(_: *Self, a: *Vec3, b: *Vec3, axis: Axis3, sign: f32) bool {
+    fn clipLineAgainstFrustumPlane(_: *Self, a: *Vec3, b: *Vec3, frustumplane: FrustumPlane) bool {
+        const axis, const coeff = .{ frustumplane.axis, frustumplane.coefficient };
+
         const a_val = switch (axis) {
-            Axis3.y => a.y,
-            Axis3.z => a.z,
+            FrustumPlane.Axis3.y => a.y,
+            FrustumPlane.Axis3.z => a.z,
             else => unreachable,
         };
         const b_val = switch (axis) {
-            Axis3.y => b.y,
-            Axis3.z => b.z,
+            FrustumPlane.Axis3.y => b.y,
+            FrustumPlane.Axis3.z => b.z,
             else => unreachable,
         };
 
-        const a_plane, const b_plane = .{ sign * a.x, sign * b.x };
+        const a_plane, const b_plane = .{ coeff * a.x, coeff * b.x };
 
-        const a_inside = if (sign > 0) a_val <= a_plane else a_val >= a_plane;
-        const b_inside = if (sign > 0) b_val <= b_plane else b_val >= b_plane;
+        const a_inside = if (coeff > 0) a_val <= a_plane else a_val >= a_plane;
+        const b_inside = if (coeff > 0) b_val <= b_plane else b_val >= b_plane;
 
         if (a_inside and b_inside) {
             return true;
@@ -283,14 +287,14 @@ pub const Renderer = struct {
         }
 
         if (!a_inside) {
-            const time = (a_val - sign * a.x) / ((a_val - sign * a.x) - (b_val - sign * b.x));
+            const time = (a_val - coeff * a.x) / ((a_val - coeff * a.x) - (b_val - coeff * b.x));
             if (time >= 0 and time <= 1) {
                 a.* = lib.linearInterpolateVec3(a.*, b.*, time);
             }
         }
 
         if (!b_inside) {
-            const time = (b_val - sign * b.x) / ((b_val - sign * b.x) - (a_val - sign * a.x));
+            const time = (b_val - coeff * b.x) / ((b_val - coeff * b.x) - (a_val - coeff * a.x));
             if (time >= 0 and time <= 1) {
                 b.* = lib.linearInterpolateVec3(b.*, a.*, time);
             }
@@ -316,16 +320,22 @@ pub const Renderer = struct {
     }
 };
 
-pub const FrustumPlane = struct {
-    axis: Axis3,
-    sign: f32,
-    coefficient: f32,
+pub const Frustum = struct {
+    vertical_positive: FrustumPlane,
+    horizontal_positive: FrustumPlane,
+    vertical_negative: FrustumPlane,
+    horizontal_negative: FrustumPlane,
 };
 
-pub const Axis3 = enum {
-    x,
-    y,
-    z,
+pub const FrustumPlane = struct {
+    axis: Axis3,
+    coefficient: f32,
+
+    pub const Axis3 = enum {
+        x,
+        y,
+        z,
+    };
 };
 
 pub const TerminalInfo = struct {
