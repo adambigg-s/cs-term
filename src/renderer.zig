@@ -55,16 +55,8 @@ pub const Renderer = struct {
         for (simulation.targets.items) |target| {
             self.renderPoint(&simulation.player, target.pos, 'X');
         }
-        // other debug stuff right in front
-        self.renderPoint(&simulation.player, Vec3.build(10, 0, 1.5), 'a');
-        self.renderPoint(&simulation.player, Vec3.build(10, 1.5, 0), 'b');
-        // large square on the ground
-        self.renderPoint(&simulation.player, Vec3.build(10, -50, 10), 'a');
-        self.renderPoint(&simulation.player, Vec3.build(10, -50, -10), 'b');
-        self.renderPoint(&simulation.player, Vec3.build(-10, -50, 10), 'c');
-        self.renderPoint(&simulation.player, Vec3.build(-10, -50, -10), 'd');
 
-        var box = Box3.build(Vec3.build(-70, -70, -70), Vec3.build(70, 70, 70));
+        var box = Box3.build(Vec3.build(-100, -100, -100), Vec3.build(100, 100, 100));
         const edges = box.toLinestrip();
 
         for (0..edges.len / 2) |index| {
@@ -73,28 +65,28 @@ pub const Renderer = struct {
             const a = Vec3.build(p1[0], p1[1], p1[2]);
             const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLine(&simulation.player, a, b, '*');
+            self.renderLineClipped(&simulation.player, a, b, '*');
         }
 
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
             Vec3.build(30, -2, 30),
             Vec3.build(30, -2, -30),
             '.',
         );
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
             Vec3.build(30, -2, -30),
             Vec3.build(-30, -2, -30),
             ',',
         );
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
             Vec3.build(-30, -2, -30),
             Vec3.build(-30, -2, 30),
             '<',
         );
-        self.renderLine(
+        self.renderLineClipped(
             &simulation.player,
             Vec3.build(-30, -2, 30),
             Vec3.build(30, -2, 30),
@@ -146,82 +138,35 @@ pub const Renderer = struct {
         _ = self.main.set(unsigned_x, unsigned_y, fill);
     }
 
-    fn renderLine(self: *Self, viewmodel: *sim.Player, a: Vec3, b: Vec3, fill: u8) void {
-        var view_a, var view_b = .{
+    fn renderLineClipped(self: *Self, viewmodel: *sim.Player, a: Vec3, b: Vec3, fill: u8) void {
+        var viewspace_a, var viewspace_b = .{
             self.worldToViewspace(viewmodel, a),
             self.worldToViewspace(viewmodel, b),
         };
-        if (view_a.x < viewmodel.near_plane and view_b.x < viewmodel.near_plane) {
+
+        if (viewspace_a.x < viewmodel.near_plane and viewspace_b.x < viewmodel.near_plane) {
             return;
-        } else if (view_a.x < viewmodel.near_plane) {
-            Self.clipNear(&view_a, view_b, viewmodel);
-        } else if (view_b.x < viewmodel.near_plane) {
-            Self.clipNear(&view_b, view_a, viewmodel);
+        } else if (viewspace_a.x < viewmodel.near_plane) {
+            Self.clipNear(&viewspace_a, viewspace_b, viewmodel);
+        } else if (viewspace_b.x < viewmodel.near_plane) {
+            Self.clipNear(&viewspace_b, viewspace_a, viewmodel);
+        }
+
+        if (!self.clipLineToFrustum(&viewspace_a, &viewspace_b)) {
+            return;
         }
 
         const ndc_a, const ndc_b = .{
-            self.viewspaceToNDC(viewmodel, view_a),
-            self.viewspaceToNDC(viewmodel, view_b),
+            self.viewspaceToNDC(viewmodel, viewspace_a),
+            self.viewspaceToNDC(viewmodel, viewspace_b),
         };
 
-        const to, const from = .{
+        const screenspace_a, const screenspace_b = .{
             self.NDCToScreenspace(ndc_a),
             self.NDCToScreenspace(ndc_b),
         };
 
-        const to_inbounds, const from_inbounds = .{
-            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
-            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
-        };
-        if (!to_inbounds and !from_inbounds) return;
-
-        var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
-        while (tracer.next()) |point| {
-            const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
-            _ = self.main.set(unsigned_x, unsigned_y, fill);
-        }
-    }
-
-    fn renderLineClipped(self: *Self, viewmodel: *sim.Player, a: Vec3, b: Vec3, fill: u8) void {
-        var va, var vb = .{
-            self.worldToViewspace(viewmodel, a),
-            self.worldToViewspace(viewmodel, b),
-        };
-
-        if (va.x < viewmodel.near_plane and vb.x < viewmodel.near_plane) return;
-
-        if (va.x < viewmodel.near_plane) self.clipPlane(&va, vb, viewmodel.near_plane, Axis3.x);
-        if (vb.x < viewmodel.near_plane) self.clipPlane(&vb, va, viewmodel.near_plane, Axis3.x);
-
-        // honestly no idea why this isn't working...
-        // shouldn't have to check this many things but i just want it to work
-        // first before making it efficient
-        self.clipSymmetric(&va, vb, 1, .y);
-        self.clipSymmetric(&va, vb, -1, .y);
-        self.clipSymmetric(&va, vb, 1, .z);
-        self.clipSymmetric(&va, vb, -1, .z);
-        self.clipSymmetric(&vb, va, 1, .y);
-        self.clipSymmetric(&vb, va, -1, .y);
-        self.clipSymmetric(&vb, va, 1, .z);
-        self.clipSymmetric(&vb, va, -1, .z);
-
-        const ndca, const ndcb = .{
-            self.viewspaceToNDC(viewmodel, va),
-            self.viewspaceToNDC(viewmodel, vb),
-        };
-
-        const to, const from = .{
-            self.NDCToScreenspace(ndca),
-            self.NDCToScreenspace(ndcb),
-        };
-
-        const to_inbounds, const from_inbounds = .{
-            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
-            self.main.inbounds(@bitCast(to.x), @bitCast(to.y)),
-        };
-        if (!to_inbounds and !from_inbounds) return;
-
-        var tracer = LineTracer.build(to.x, to.y, from.x, from.y);
+        var tracer = LineTracer.build(screenspace_a.x, screenspace_a.y, screenspace_b.x, screenspace_b.y);
         while (tracer.next()) |point| {
             const unsigned_x: usize, const unsigned_y: usize = .{ @bitCast(point.x), @bitCast(point.y) };
             _ = self.main.set(unsigned_x, unsigned_y, fill);
@@ -242,8 +187,7 @@ pub const Renderer = struct {
     }
 
     fn viewspaceToNDC(self: *Self, viewmodel: *sim.Player, viewspace: Vec3) Vec3 {
-        // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field
-        // -of-view-and-lens-length
+        // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field-of-view-and-lens-length
         const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
 
         const proj_x, const proj_y = self.terminalProjectionCorrection(projection_coefficient);
@@ -279,26 +223,80 @@ pub const Renderer = struct {
         return viewx and viewy and viewz;
     }
 
-    fn clipPlane(_: *Self, target: *Vec3, other: Vec3, plane: f32, axis: Axis3) void {
-        const time = switch (axis) {
-            Axis3.x => (plane - target.x) / (other.x - target.x),
-            Axis3.y => (plane - target.y) / (other.y - target.y),
-            Axis3.z => (plane - target.z) / (other.z - target.z),
-        };
+    fn clipLineToFrustum(self: *Self, a: *Vec3, b: *Vec3) bool {
+        // https://chaosinmotion.com/2016/05/22/3d-clipping-in-homogeneous-coordinates/comment-page-1/
+        // slightly faster way to clip lines in a software rasterizer, despite
+        // looking much more complex this only uses 3D coordinate space so
+        // we need to clip directly against the Euclidean geometrical frustum
+        // without a homogenous coord this is basically the same math as all
+        // the 4D stuff except we are we keep the homogenous coordinate in its
+        // respective vector space
 
-        target.* = lib.linearInterpolateVec3(target.*, other, time);
+        // my references frames (for camera):
+        //     x: depth
+        //     y: up
+        //     z: right
+
+        // clipping against (up = -depth)
+        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.y, -1)) {
+            return false;
+        }
+        // clipping against (up = depth)
+        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.y, 1)) {
+            return false;
+        }
+        // clipping against (right = -depth)
+        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.z, -2)) {
+            return false;
+        }
+        // clipping against (right = depth)
+        if (!self.clipLineAgainstFrustumPlane(a, b, Axis3.z, 2)) {
+            return false;
+        }
+
+        return true;
     }
 
-    fn clipSymmetric(self: *Self, target: *Vec3, other: Vec3, plane: f32, axis: Axis3) void {
-        const value = switch (axis) {
-            Axis3.x => target.x,
-            Axis3.y => target.y,
-            Axis3.z => target.z,
+    fn clipLineAgainstFrustumPlane(_: *Self, a: *Vec3, b: *Vec3, axis: Axis3, sign: f32) bool {
+        const a_val = switch (axis) {
+            Axis3.y => a.y,
+            Axis3.z => a.z,
+            else => unreachable,
+        };
+        const b_val = switch (axis) {
+            Axis3.y => b.y,
+            Axis3.z => b.z,
+            else => unreachable,
         };
 
-        if ((plane > 0 and value > plane) or (plane < 0 and value < plane)) {
-            self.clipPlane(target, other, plane, axis);
+        const a_plane, const b_plane = .{ sign * a.x, sign * b.x };
+
+        const a_inside = if (sign > 0) a_val <= a_plane else a_val >= a_plane;
+        const b_inside = if (sign > 0) b_val <= b_plane else b_val >= b_plane;
+
+        if (a_inside and b_inside) {
+            return true;
         }
+
+        if (!a_inside and !b_inside) {
+            return false;
+        }
+
+        if (!a_inside) {
+            const time = (a_val - sign * a.x) / ((a_val - sign * a.x) - (b_val - sign * b.x));
+            if (time >= 0 and time <= 1) {
+                a.* = lib.linearInterpolateVec3(a.*, b.*, time);
+            }
+        }
+
+        if (!b_inside) {
+            const time = (b_val - sign * b.x) / ((b_val - sign * b.x) - (a_val - sign * a.x));
+            if (time >= 0 and time <= 1) {
+                b.* = lib.linearInterpolateVec3(b.*, a.*, time);
+            }
+        }
+
+        return true;
     }
 
     fn clipNear(target: *Vec3, other: Vec3, viewmodel: *sim.Player) void {
@@ -316,6 +314,12 @@ pub const Renderer = struct {
     fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
         return .{ @as(f32, @floatFromInt(self.width)) / 2, @as(f32, @floatFromInt(self.height)) / 2 };
     }
+};
+
+pub const FrustumPlane = struct {
+    axis: Axis3,
+    sign: f32,
+    coefficient: f32,
 };
 
 pub const Axis3 = enum {
