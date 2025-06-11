@@ -30,7 +30,7 @@ pub fn getCursorPosition() !struct { i32, i32 } {
     return .{ @intCast(point.x), @intCast(point.y) };
 }
 
-pub fn getTerminalDimensions() !struct { usize, usize } {
+pub fn getTerminalDimensionsChar() !struct { usize, usize } {
     var console_info: WinConsoleInfo = undefined;
     const handle = GetStdHandle(win_std_handle);
     const response = GetConsoleScreenBufferInfo(handle, &console_info);
@@ -43,6 +43,23 @@ pub fn getTerminalDimensions() !struct { usize, usize } {
         console_info.window_size.y - 1,
     };
     const width: u16, const height: u16 = .{ @bitCast(width_signed), @bitCast(height_signed) };
+
+    return .{ @as(usize, width), @as(usize, height) };
+}
+
+pub fn getTerminalDimensionsPixel() !struct { usize, usize } {
+    var rectangle: WinLongRect = undefined;
+    const handle = GetConsoleWindow();
+    const response = GetClientRect(handle, &rectangle);
+    if (response == win_false) {
+        return WinError.NullResponse;
+    }
+
+    const width_signed, const height_signed = .{
+        rectangle.right - rectangle.left,
+        rectangle.bottom - rectangle.top,
+    };
+    const width: u32, const height: u32 = .{ @bitCast(width_signed), @bitCast(height_signed) };
 
     return .{ @as(usize, width), @as(usize, height) };
 }
@@ -140,6 +157,7 @@ const WinInt = i32;
 const WinKeyReturn = i16;
 const WinDWord = u32;
 const WinHandle = *opaque {};
+const WinWindowHandle = *opaque {};
 const WinShort = i16;
 const WinLong = i32;
 
@@ -150,6 +168,12 @@ const win_false: WinBool = 0;
 const win_not_false: WinBool = 999999;
 const win_key_false: WinKeyReturn = 0;
 const win_console_current: WinBool = win_false;
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getclientrect
+extern "User32" fn GetClientRect(handle: WinHandle, *WinLongRect) WinBool;
+
+// https://learn.microsoft.com/en-us/windows/console/getconsolewindow
+extern "Kernel32" fn GetConsoleWindow() WinHandle;
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos
 extern "User32" fn GetCursorPos(point: *WinPoint) WinBool;

@@ -53,6 +53,9 @@ pub const Application = struct {
                 std.debug.print("buffer size: {}, {}\n", .{ self.renderer.width, self.renderer.height });
 
                 std.debug.print("inputs struct: {any}\n", .{self.inputs});
+
+                const window_size = win.getTerminalDimensionsPixel() catch null;
+                std.debug.print("\x1b[33hscreen size info: {any}\n", .{window_size});
             }
         }
     }

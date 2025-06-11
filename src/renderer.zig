@@ -22,7 +22,7 @@ pub const Renderer = struct {
     const math = std.math;
 
     pub fn init(allocator: Alloc) !Self {
-        const width, const height = try win.getTerminalDimensions();
+        const width, const height = try win.getTerminalDimensionsChar();
 
         // need to query this later for proper scale rendering
         var terminal_info: TerminalInfo = undefined;
@@ -165,14 +165,14 @@ pub const Renderer = struct {
 
     fn viewspaceToNDC(self: *Self, viewmodel: *sim.Player, viewspace: Vec3) Vec3 {
         // https://stackoverflow.com/questions/4427662/whats-the-relationship-between-field-of-view-and-lens-length
-        const projection_coefficient = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
+        const projection_coefficient_base = 1 / (math.tan(viewmodel.vertical_fov / 2) * viewspace.x);
 
-        const proj_x, const proj_y = self.terminalProjectionCorrection(projection_coefficient);
+        const projection_coefficients = self.terminalProjectionCorrection(projection_coefficient_base);
 
         // puts into NDC in screen-space basis
         return Vec3.build(
-            viewspace.z * proj_x,
-            -viewspace.y * proj_y,
+            viewspace.z * projection_coefficients.x,
+            -viewspace.y * projection_coefficients.y,
             viewspace.x,
         );
     }
@@ -202,6 +202,7 @@ pub const Renderer = struct {
 
     fn makeFrustum(self: *Self, viewmodel: *sim.Player) Frustum {
         const half_tan_fov = math.tan(viewmodel.vertical_fov / 2);
+
         const vertical_modifier = half_tan_fov;
         const horizontal_modifier = vertical_modifier * self.terminal_info.screen_aspect;
 
@@ -308,11 +309,11 @@ pub const Renderer = struct {
         target.* = lib.linearInterpolateVec3(target.*, other, time);
     }
 
-    fn terminalProjectionCorrection(self: *Self, raw_coefficient: f32) struct { f32, f32 } {
-        return .{
+    fn terminalProjectionCorrection(self: *Self, raw_coefficient: f32) vec.Vec2(f32) {
+        return vec.Vec2(f32).build(
             raw_coefficient / self.terminal_info.screen_aspect,
             raw_coefficient / self.terminal_info.char_apsect,
-        };
+        );
     }
 
     fn halfDimensionsFloat(self: *Self) struct { f32, f32 } {
