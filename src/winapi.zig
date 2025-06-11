@@ -47,6 +47,15 @@ pub fn getTerminalDimensionsChar() !struct { usize, usize } {
     return .{ @as(usize, width), @as(usize, height) };
 }
 
+pub fn getFontSize() !struct { usize, usize } {
+    const handle = GetStdHandle(win_std_handle);
+    const size = GetConsoleFontSize(handle, 0);
+
+    const width: u16, const height: u16 = .{ @intCast(size.x), @intCast(size.y) };
+
+    return .{ @as(usize, width), @as(usize, height) };
+}
+
 pub fn getTerminalDimensionsPixel() !struct { usize, usize } {
     var rectangle: WinLongRect = undefined;
     const handle = GetConsoleWindow();
@@ -157,13 +166,11 @@ const WinInt = i32;
 const WinKeyReturn = i16;
 const WinDWord = u32;
 const WinHandle = *opaque {};
-const WinWindowHandle = *opaque {};
 const WinShort = i16;
 const WinLong = i32;
 
 // https://learn.microsoft.com/en-us/windows/console/getstdhandle
 const win_std_handle = -11;
-
 const win_false: WinBool = 0;
 const win_not_false: WinBool = 999999;
 const win_key_false: WinKeyReturn = 0;

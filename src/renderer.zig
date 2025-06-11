@@ -12,6 +12,24 @@ pub const Renderer = struct {
     terminal_info: TerminalInfo,
     config: RenderConfig,
 
+    pub const Frustum = struct {
+        vertical_positive: FrustumPlane,
+        horizontal_positive: FrustumPlane,
+        vertical_negative: FrustumPlane,
+        horizontal_negative: FrustumPlane,
+    };
+
+    pub const FrustumPlane = struct {
+        axis: Axis3,
+        coefficient: f32,
+
+        pub const Axis3 = enum {
+            x,
+            y,
+            z,
+        };
+    };
+
     const Self = @This();
     const Alloc = std.mem.Allocator;
     const Vec3 = vec.Vec3(f32);
@@ -58,7 +76,7 @@ pub const Renderer = struct {
         }
 
         // debug box drawn just to make sure clipping and stuff working
-        var box = Box3.build(Vec3.build(-100, -100, -100), Vec3.build(100, 100, 100));
+        var box = Box3.build(Vec3.build(-500, -10, -500), Vec3.build(500, 150, 500));
         const edges = box.toLinestrip();
         for (0..edges.len / 2) |index| {
             const p1 = edges[2 * index + 0];
@@ -68,6 +86,8 @@ pub const Renderer = struct {
 
             self.renderLineClipped(&simulation.player, a, b, '*');
         }
+
+        self.renderText("text rendering test test", vec.Vec2(usize).build(0, 0));
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -96,6 +116,20 @@ pub const Renderer = struct {
         try buffer_writer.flush();
     }
 
+    fn renderText(self: *Self, text: []const u8, start: vec.Vec2(usize)) void {
+        var runner: usize = 0;
+        var span: usize = 0;
+        for (text) |char| {
+            const result = self.main.set(start.x + runner, start.y + span, @intCast(char));
+            runner += 1;
+
+            if (!result) {
+                runner = 0;
+                span += 1;
+            }
+        }
+    }
+
     fn renderPoint(self: *Self, viewmodel: *sim.Player, position: Vec3, fill: u8) void {
         const viewspace = self.worldToViewspace(viewmodel, position);
 
@@ -120,12 +154,8 @@ pub const Renderer = struct {
             self.worldToViewspace(viewmodel, b),
         };
 
-        if (viewspace_a.x < viewmodel.near_plane and viewspace_b.x < viewmodel.near_plane) {
+        if (!self.clipDistancePlanes(&viewspace_a, &viewspace_b, viewmodel)) {
             return;
-        } else if (viewspace_a.x < viewmodel.near_plane) {
-            Self.clipNear(&viewspace_a, viewspace_b, viewmodel);
-        } else if (viewspace_b.x < viewmodel.near_plane) {
-            Self.clipNear(&viewspace_b, viewspace_a, viewmodel);
         }
 
         const frustum = self.makeFrustum(viewmodel);
@@ -226,6 +256,22 @@ pub const Renderer = struct {
         };
     }
 
+    fn clipDistancePlanes(_: *Self, a: *Vec3, b: *Vec3, viewmodel: *sim.Player) bool {
+        if (a.x < viewmodel.near_plane and b.x < viewmodel.near_plane) {
+            return false;
+        }
+        if (a.x < viewmodel.near_plane) {
+            const time = (viewmodel.near_plane - a.x) / (b.x - a.x);
+            a.* = lib.linearInterpolateVec3(a.*, b.*, time);
+        }
+        if (b.x < viewmodel.near_plane) {
+            const time = (viewmodel.near_plane - b.x) / (a.x - b.x);
+            b.* = lib.linearInterpolateVec3(b.*, a.*, time);
+        }
+
+        return true;
+    }
+
     fn clipLineToFrustum(self: *Self, a: *Vec3, b: *Vec3, frustum: Frustum) bool {
         // https://chaosinmotion.com/2016/05/22/3d-clipping-in-homogeneous-coordinates/comment-page-1/
         // slightly faster way to clip lines in a software rasterizer, despite
@@ -304,11 +350,6 @@ pub const Renderer = struct {
         return true;
     }
 
-    fn clipNear(target: *Vec3, other: Vec3, viewmodel: *sim.Player) void {
-        const time = (viewmodel.near_plane - target.x) / (other.x - target.x);
-        target.* = lib.linearInterpolateVec3(target.*, other, time);
-    }
-
     fn terminalProjectionCorrection(self: *Self, raw_coefficient: f32) vec.Vec2(f32) {
         return vec.Vec2(f32).build(
             raw_coefficient / self.terminal_info.screen_aspect,
@@ -321,22 +362,14 @@ pub const Renderer = struct {
     }
 };
 
-pub const Frustum = struct {
-    vertical_positive: FrustumPlane,
-    horizontal_positive: FrustumPlane,
-    vertical_negative: FrustumPlane,
-    horizontal_negative: FrustumPlane,
-};
+pub const RenderConfig = struct {
+    render_freq: usize,
 
-pub const FrustumPlane = struct {
-    axis: Axis3,
-    coefficient: f32,
+    const Self = @This();
 
-    pub const Axis3 = enum {
-        x,
-        y,
-        z,
-    };
+    pub fn shouldRender(self: *Self, tick: usize) bool {
+        return 0 == tick % self.render_freq;
+    }
 };
 
 pub const TerminalInfo = struct {
@@ -469,16 +502,6 @@ pub const LineTracer = struct {
         }
 
         return point;
-    }
-};
-
-pub const RenderConfig = struct {
-    render_freq: usize,
-
-    const Self = @This();
-
-    pub fn shouldRender(self: *Self, tick: usize) bool {
-        return 0 == tick % self.render_freq;
     }
 };
 

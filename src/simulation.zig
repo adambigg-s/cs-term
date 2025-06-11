@@ -6,6 +6,8 @@ const win = lib.win;
 pub const Simulation = struct {
     targets: std.ArrayList(Target),
     target_count: usize,
+    score: u16,
+    target_score: u16,
     player: Player,
     tick: usize,
 
@@ -15,6 +17,8 @@ pub const Simulation = struct {
         var simulation = Simulation{
             .targets = try std.ArrayList(Target).initCapacity(allocator, target_count),
             .target_count = target_count,
+            .score = 0,
+            .target_score = 100,
             .player = Player.new(),
             .tick = 0,
         };
@@ -29,15 +33,61 @@ pub const Simulation = struct {
 
     pub fn update(self: *Self, inputs: *Inputs) !void {
         self.player.update(inputs);
+        if (inputs.mouse_click) {
+            self.targetHit();
+        }
         self.tick += 1;
+    }
+
+    pub fn isComplete(self: *Self) bool {
+        return self.score == self.target_score;
+    }
+
+    fn targetHit(self: *Self) void {
+        for (self.targets.items, 0..self.targets.items.len) |target, index| {
+            if (target.rayIntersection(self.player.pos, self.player.front)) {
+                self.randomTargetIndex(index);
+                self.score += 1;
+            }
+        }
+    }
+
+    fn randomTargetIndex(self: *Self, index: usize) void {
+        self.targets.items[index] = self.randomTarget();
+    }
+
+    fn randomTarget(_: *Self) Target {
+        return Target{
+            .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(250, 100, 250)),
+            .size = 50,
+        };
     }
 
     fn addTarget(self: *Self) void {
         // ensure there is one target direclty where you spawn for debugging
-        self.targets.append(Target{
-            .pos = vec.Vec3(f32).build(0, 0, 0),
-            .size = 0,
-        }) catch return;
+        for (0..self.target_count) |_| {
+            self.targets.append(Target{
+                .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(250, 100, 250)),
+                .size = 50,
+            }) catch return;
+        }
+    }
+};
+
+pub const Target = struct {
+    size: f32,
+    pos: vec.Vec3(f32),
+
+    const Self = @This();
+
+    pub fn rayIntersection(self: *const Self, origin: vec.Vec3(f32), direction: vec.Vec3(f32)) bool {
+        const relative = origin.sub(self.pos);
+        const alpha = direction.innerProduct(direction);
+        const beta = 2 * relative.innerProduct(direction);
+        const gamma = relative.innerProduct(relative) - self.size * self.size;
+        const discriminant = beta * beta - 4 * alpha * gamma;
+
+        return discriminant > 0;
     }
 };
 
@@ -136,11 +186,6 @@ pub const Player = struct {
         self.up = self.right.crossProduct(self.front);
         self.up = self.up.normalize();
     }
-};
-
-pub const Target = struct {
-    size: f32,
-    pos: vec.Vec3(f32),
 };
 
 pub const Inputs = struct {
