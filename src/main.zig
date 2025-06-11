@@ -6,7 +6,7 @@ pub fn main() !void {
 
     var app = lib.app.Application{
         .inputs = lib.sim.Inputs.init(),
-        .simulation = try lib.sim.Simulation.init(general_allocator.allocator(), 5),
+        .simulation = try lib.sim.Simulation.init(general_allocator.allocator(), 10),
         .renderer = try lib.ren.Renderer.init(general_allocator.allocator()),
     };
     defer app.deinit();

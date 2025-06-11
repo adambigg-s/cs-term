@@ -44,7 +44,7 @@ pub const Renderer = struct {
 
         // need to query this later for proper scale rendering
         var terminal_info: TerminalInfo = undefined;
-        terminal_info.char_apsect = 1.2; // height x width of the terminal character
+        terminal_info.char_apsect = 1.3; // height x width of the terminal character
         terminal_info.screen_aspect = 2800.0 / 1080.0; // width x height of the terminal screen
 
         return Renderer{
@@ -84,10 +84,23 @@ pub const Renderer = struct {
             const a = Vec3.build(p1[0], p1[1], p1[2]);
             const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLineClipped(&simulation.player, a, b, '*');
+            self.renderLineClipped(&simulation.player, a, b, '.');
         }
 
-        self.renderText("text rendering test test", vec.Vec2(usize).build(0, 0));
+        var box2 = Box3.build(Vec3.build(-100, 150, -100), Vec3.build(100, 350, 100));
+        const edges2 = box2.toLinestrip();
+        for (0..edges2.len / 2) |index| {
+            const p1 = edges2[2 * index + 0];
+            const p2 = edges2[2 * index + 1];
+            const a = Vec3.build(p1[0], p1[1], p1[2]);
+            const b = Vec3.build(p2[0], p2[1], p2[2]);
+
+            self.renderLineClipped(&simulation.player, a, b, '`');
+        }
+
+        self.renderText("text rendering test testing super super long text it needs to go over the screen limit for testing to see if it is jumping a character or not or if womp womp will it go over??? damnit still not long enough we have to just put more text", vec.Vec2(usize).build(0, 0));
+        // jank "crosshair" lol for now
+        self.renderText("0", vec.Vec2(usize).build(self.width / 2, self.height / 2));
     }
 
     pub fn commitPass(self: *Self) !void {
@@ -120,13 +133,16 @@ pub const Renderer = struct {
         var runner: usize = 0;
         var span: usize = 0;
         for (text) |char| {
-            const result = self.main.set(start.x + runner, start.y + span, @intCast(char));
-            runner += 1;
-
-            if (!result) {
+            while (!self.main.set(start.x + runner, start.y + span, @intCast(char))) {
                 runner = 0;
                 span += 1;
+
+                if (span > self.height) {
+                    break;
+                }
             }
+
+            runner += 1;
         }
     }
 
@@ -324,11 +340,9 @@ pub const Renderer = struct {
 
         const a_inside = if (coeff > 0) a_val <= a_plane else a_val >= a_plane;
         const b_inside = if (coeff > 0) b_val <= b_plane else b_val >= b_plane;
-
         if (a_inside and b_inside) {
             return true;
         }
-
         if (!a_inside and !b_inside) {
             return false;
         }
@@ -339,7 +353,6 @@ pub const Renderer = struct {
                 a.* = lib.linearInterpolateVec3(a.*, b.*, time);
             }
         }
-
         if (!b_inside) {
             const time = (b_val - coeff * b.x) / ((b_val - coeff * b.x) - (a_val - coeff * a.x));
             if (time >= 0 and time <= 1) {
