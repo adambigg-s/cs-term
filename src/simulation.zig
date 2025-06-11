@@ -2,22 +2,30 @@ const lib = @import("root.zig");
 const std = lib.std;
 const vec = lib.vec;
 const win = lib.win;
+const ren = lib.ren;
 
 pub const Simulation = struct {
     targets: std.ArrayList(Target),
     target_count: usize,
+    target_size: f32,
     score: u16,
+    spawn: ren.Box3,
     target_score: u16,
     player: Player,
     tick: usize,
 
     const Self = @This();
 
-    pub fn init(allocator: std.mem.Allocator, target_count: usize) !Self {
+    pub fn init(allocator: std.mem.Allocator) !Self {
         var simulation = Simulation{
-            .targets = try std.ArrayList(Target).initCapacity(allocator, target_count),
-            .target_count = target_count,
+            .targets = std.ArrayList(Target).init(allocator),
+            .target_count = 10,
+            .target_size = 10,
             .score = 0,
+            .spawn = ren.Box3.build(
+                vec.Vec3(f32).build(-500, -10, -500),
+                vec.Vec3(f32).build(500, 150, 500),
+            ),
             .target_score = 100,
             .player = Player.new(),
             .tick = 0,
@@ -40,7 +48,7 @@ pub const Simulation = struct {
     }
 
     pub fn isComplete(self: *Self) bool {
-        return self.score == self.target_score;
+        return self.score >= self.target_score;
     }
 
     fn targetHit(self: *Self) void {
@@ -56,20 +64,17 @@ pub const Simulation = struct {
         self.targets.items[index] = self.randomTarget();
     }
 
-    fn randomTarget(_: *Self) Target {
+    fn randomTarget(self: *Self) Target {
         return Target{
-            .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(250, 100, 250)),
-            .size = 50,
+            .pos = lib.randomVec3().mulComponent(self.spawn.max),
+            .size = self.target_size,
         };
     }
 
     fn addTarget(self: *Self) void {
         // ensure there is one target direclty where you spawn for debugging
         for (0..self.target_count) |_| {
-            self.targets.append(Target{
-                .pos = lib.randomVec3().mulComponent(vec.Vec3(f32).build(250, 100, 250)),
-                .size = 50,
-            }) catch return;
+            self.targets.append(self.randomTarget()) catch return;
         }
     }
 };

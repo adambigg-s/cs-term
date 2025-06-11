@@ -70,35 +70,22 @@ pub const Renderer = struct {
     }
 
     pub fn renderSimulation(self: *Self, simulation: *sim.Simulation) void {
-        // draws and X for the actual targets rn
-        for (simulation.targets.items) |target| {
-            self.renderPoint(&simulation.player, target.pos, 'X');
-        }
-
-        // debug box drawn just to make sure clipping and stuff working
-        var box = Box3.build(Vec3.build(-500, -10, -500), Vec3.build(500, 150, 500));
-        const edges = box.toLinestrip();
+        // render the box the player is confined to
+        const edges = simulation.spawn.toLinestrip();
         for (0..edges.len / 2) |index| {
             const p1 = edges[2 * index + 0];
             const p2 = edges[2 * index + 1];
             const a = Vec3.build(p1[0], p1[1], p1[2]);
             const b = Vec3.build(p2[0], p2[1], p2[2]);
 
-            self.renderLineClipped(&simulation.player, a, b, '.');
+            self.renderLineClipped(&simulation.player, a, b, '|');
         }
 
-        var box2 = Box3.build(Vec3.build(-100, 150, -100), Vec3.build(100, 350, 100));
-        const edges2 = box2.toLinestrip();
-        for (0..edges2.len / 2) |index| {
-            const p1 = edges2[2 * index + 0];
-            const p2 = edges2[2 * index + 1];
-            const a = Vec3.build(p1[0], p1[1], p1[2]);
-            const b = Vec3.build(p2[0], p2[1], p2[2]);
-
-            self.renderLineClipped(&simulation.player, a, b, '`');
+        // draws and X for the actual targets rn
+        for (simulation.targets.items) |target| {
+            self.renderPoint(&simulation.player, target.pos, 'X');
         }
 
-        self.renderText("text rendering test testing super super long text it needs to go over the screen limit for testing to see if it is jumping a character or not or if womp womp will it go over??? damnit still not long enough we have to just put more text", vec.Vec2(usize).build(0, 0));
         // jank "crosshair" lol for now
         self.renderText("0", vec.Vec2(usize).build(self.width / 2, self.height / 2));
     }
@@ -127,6 +114,10 @@ pub const Renderer = struct {
         try writer.writeAll("\x1b[?25h");
 
         try buffer_writer.flush();
+    }
+
+    fn renderBillboardCircle(self: *Self, viewmodel: *sim.Player, position: Vec3, size: f32, fill: u8) void {
+        _ = .{ self, viewmodel, position, size, fill };
     }
 
     fn renderText(self: *Self, text: []const u8, start: vec.Vec2(usize)) void {
@@ -215,6 +206,10 @@ pub const Renderer = struct {
 
         const projection_coefficients = self.terminalProjectionCorrection(projection_coefficient_base);
 
+        // my references frames (for camera):
+        //     x: depth
+        //     y: up
+        //     z: right
         // puts into NDC in screen-space basis
         return Vec3.build(
             viewspace.z * projection_coefficients.x,
@@ -293,14 +288,7 @@ pub const Renderer = struct {
         // slightly faster way to clip lines in a software rasterizer, despite
         // looking much more complex this only uses 3D coordinate space so
         // we need to clip directly against the Euclidean geometrical frustum
-        // without a homogenous coord this is basically the same math as all
-        // the 4D stuff except we are we keep the homogenous coordinate in its
-        // respective vector space
-
-        // my references frames (for camera):
-        //     x: depth
-        //     y: up
-        //     z: right
+        // without a homogenous coord
 
         // clipping against (up = -depth * vertical fov)
         if (!self.clipLineAgainstFrustumPlane(a, b, frustum.horizontal_negative)) {
@@ -467,14 +455,19 @@ pub const LineTracer = struct {
     const Self = @This();
 
     pub fn build(x0: isize, y0: isize, x1: isize, y1: isize) Self {
-        var dx = x1 - x0;
-        var dy = y1 - y0;
-        dx = @intCast(@abs(dx));
-        dy = @intCast(@abs(dy));
-        dy = -dy;
+        var dx: isize, var dy: isize = .{
+            x1 - x0,
+            y1 - y0,
+        };
+        dx, dy = .{
+            @as(isize, @intCast(@abs(dx))),
+            @as(isize, @intCast(@abs(dy))) * -1,
+        };
 
-        const sx: isize = if (x0 < x1) 1 else -1;
-        const sy: isize = if (y0 < y1) 1 else -1;
+        const sx: isize, const sy: isize = .{
+            if (x0 < x1) 1 else -1,
+            if (y0 < y1) 1 else -1,
+        };
 
         const err = dx + dy;
 
