@@ -242,9 +242,7 @@ pub const Renderer = struct {
     }
 
     fn makeFrustum(self: *Self, viewmodel: *sim.Player) Frustum {
-        const half_tan_fov = math.tan(viewmodel.vertical_fov / 2);
-
-        const vertical_modifier = half_tan_fov;
+        const vertical_modifier = math.tan(viewmodel.vertical_fov / 2);
         const horizontal_modifier = vertical_modifier * self.terminal_info.screen_aspect;
 
         return Frustum{
