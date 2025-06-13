@@ -34,6 +34,10 @@ pub fn linearInterpolateVec3(start: vec.Vec3(f32), end: vec.Vec3(f32), time: f32
     );
 }
 
+pub fn nearestLowerOdd(comptime T: type, value: T) T {
+    return @divFloor(value, 2) * 2 - 1;
+}
+
 test "module tree test distribtuion entry point" {
     _ = @import("application.zig");
     _ = @import("renderer.zig");
@@ -41,4 +45,14 @@ test "module tree test distribtuion entry point" {
     _ = @import("vector.zig");
     _ = @import("winapi.zig");
     _ = @import("matrix.zig");
+}
+
+test "nearest odd testing" {
+    const xp: i333 = 4;
+    const x = nearestLowerOdd(i333, xp);
+    try std.testing.expect(x == 3);
+
+    const yp: usize = 20;
+    const y = nearestLowerOdd(usize, yp);
+    try std.testing.expect(y == 19);
 }

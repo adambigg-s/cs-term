@@ -4,31 +4,30 @@ const sim = lib.sim;
 const vec = lib.vec;
 const win = lib.win;
 
+pub const Frustum = struct {
+    vertical_positive: FrustumPlane,
+    horizontal_positive: FrustumPlane,
+    vertical_negative: FrustumPlane,
+    horizontal_negative: FrustumPlane,
+};
+
+pub const FrustumPlane = struct {
+    axis: Axis3,
+    coefficient: f32,
+
+    pub const Axis3 = enum {
+        X,
+        Y,
+        Z,
+    };
+};
+
 pub const Renderer = struct {
     main: Buffer(u21),
     depth: Buffer(f32),
     width: usize,
     height: usize,
     terminal_info: TerminalInfo,
-    config: RenderConfig,
-
-    pub const Frustum = struct {
-        vertical_positive: FrustumPlane,
-        horizontal_positive: FrustumPlane,
-        vertical_negative: FrustumPlane,
-        horizontal_negative: FrustumPlane,
-    };
-
-    pub const FrustumPlane = struct {
-        axis: Axis3,
-        coefficient: f32,
-
-        pub const Axis3 = enum {
-            x,
-            y,
-            z,
-        };
-    };
 
     const Self = @This();
     const Alloc = std.mem.Allocator;
@@ -40,12 +39,18 @@ pub const Renderer = struct {
     const math = std.math;
 
     pub fn init(allocator: Alloc) !Self {
-        const width, const height = try win.getTerminalDimensionsChar();
+        var width, var height = try win.getTerminalDimensionsChar();
+        // makes sure the crosshair is actually in the center
+        width, height = .{
+            lib.nearestLowerOdd(usize, width),
+            lib.nearestLowerOdd(usize, height),
+        };
 
         // need to query this later for proper scale rendering
         var terminal_info: TerminalInfo = undefined;
         terminal_info.char_apsect = 1.3; // height x width of the terminal character
         terminal_info.screen_aspect = 2800.0 / 1080.0; // width x height of the terminal screen
+        terminal_info.render_freq = 5;
 
         return Renderer{
             .main = try Buffer(u21).init(width, height, allocator, ' '),
@@ -53,9 +58,6 @@ pub const Renderer = struct {
             .width = width,
             .height = height,
             .terminal_info = terminal_info,
-            .config = RenderConfig{
-                .render_freq = 5, // should probably query and reset
-            },
         };
     }
 
@@ -242,24 +244,32 @@ pub const Renderer = struct {
     }
 
     fn makeFrustum(self: *Self, viewmodel: *sim.Player) Frustum {
-        const vertical_modifier = math.tan(viewmodel.vertical_fov / 2);
-        const horizontal_modifier = vertical_modifier * self.terminal_info.screen_aspect;
+        var fov = viewmodel.vertical_fov;
+        // slightly make fov smaller to clip in view of screen boundary
+        if (@import("builtin").mode == .Debug) {
+            fov = std.math.radiansToDegrees(fov) - 3;
+            fov = std.math.degreesToRadians(fov);
+        }
+
+        const tan_half_fov = math.tan(fov / 2);
+        const vertical_modifier = tan_half_fov * self.terminal_info.char_apsect;
+        const horizontal_modifier = tan_half_fov * self.terminal_info.screen_aspect;
 
         return Frustum{
             .vertical_positive = FrustumPlane{
-                .axis = FrustumPlane.Axis3.y,
+                .axis = FrustumPlane.Axis3.Y,
                 .coefficient = vertical_modifier,
             },
             .horizontal_positive = FrustumPlane{
-                .axis = FrustumPlane.Axis3.z,
+                .axis = FrustumPlane.Axis3.Z,
                 .coefficient = horizontal_modifier,
             },
             .vertical_negative = FrustumPlane{
-                .axis = FrustumPlane.Axis3.y,
+                .axis = FrustumPlane.Axis3.Y,
                 .coefficient = -vertical_modifier,
             },
             .horizontal_negative = FrustumPlane{
-                .axis = FrustumPlane.Axis3.z,
+                .axis = FrustumPlane.Axis3.Z,
                 .coefficient = -horizontal_modifier,
             },
         };
@@ -312,13 +322,13 @@ pub const Renderer = struct {
         const axis, const coeff = .{ frustumplane.axis, frustumplane.coefficient };
 
         const a_val = switch (axis) {
-            FrustumPlane.Axis3.y => a.y,
-            FrustumPlane.Axis3.z => a.z,
+            FrustumPlane.Axis3.Y => a.y,
+            FrustumPlane.Axis3.Z => a.z,
             else => unreachable,
         };
         const b_val = switch (axis) {
-            FrustumPlane.Axis3.y => b.y,
-            FrustumPlane.Axis3.z => b.z,
+            FrustumPlane.Axis3.Y => b.y,
+            FrustumPlane.Axis3.Z => b.z,
             else => unreachable,
         };
 
@@ -361,7 +371,9 @@ pub const Renderer = struct {
     }
 };
 
-pub const RenderConfig = struct {
+pub const TerminalInfo = struct {
+    screen_aspect: f32,
+    char_apsect: f32,
     render_freq: usize,
 
     const Self = @This();
@@ -369,11 +381,6 @@ pub const RenderConfig = struct {
     pub fn shouldRender(self: *Self, tick: usize) bool {
         return 0 == tick % self.render_freq;
     }
-};
-
-pub const TerminalInfo = struct {
-    screen_aspect: f32,
-    char_apsect: f32,
 };
 
 pub fn Buffer(comptime T: type) type {
